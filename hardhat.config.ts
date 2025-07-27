@@ -6,7 +6,7 @@ const config: HardhatUserConfig = {
     networks: {
     etherlinkTestnet: {
       url: "https://node.ghostnet.etherlink.com",
-      accounts: [""]
+      accounts: [process.env.PRIVATE_KEY!]
     }
   }
 };
