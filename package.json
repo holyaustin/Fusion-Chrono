@@ -1,0 +1,12 @@
+{
+  "name": "fusion-chrono",
+  "version": "1.0.0",
+  "description": "\"Cross-chain TWAP DEX aggregator using 1inch Fusion+ on Etherlink for MEV-resistant, time-weighted swaps with real-time slippage analytics.\" *(98 characters)*",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
