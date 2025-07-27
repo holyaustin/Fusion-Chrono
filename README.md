@@ -11,3 +11,4 @@ REPORT_GAS=true npx hardhat test
 npx hardhat node
 npx hardhat ignition deploy ./ignition/modules/Lock.ts
 ```
+MockUSDC is deployed to: 0x6e8238346D3336B205d2A6Ae360DC6D9B561e69d
