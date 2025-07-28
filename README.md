@@ -12,3 +12,5 @@ npx hardhat node
 npx hardhat ignition deploy ./ignition/modules/Lock.ts
 ```
 MockUSDC is deployed to: 0x6e8238346D3336B205d2A6Ae360DC6D9B561e69d
+or
+MockUSDC is deployed to: 0xe779d84204c509ed345C3a6E5Efd5dBB2B849E99
