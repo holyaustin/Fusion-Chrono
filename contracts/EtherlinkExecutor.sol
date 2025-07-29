@@ -11,8 +11,12 @@ contract EtherlinkExecutor is Ownable {
     address public immutable aggregator;
     address public bridge;
     
+    // Custom errors for gas efficiency
+    error InvalidAddress();
+    error SwapFailed(bytes data);
+    
     event SwapExecuted(
-        bytes32 orderId,
+        bytes32 indexed orderId, // indexed for cheaper filtering
         uint256 chunkIndex,
         address tokenIn,
         address tokenOut,
@@ -21,8 +25,10 @@ contract EtherlinkExecutor is Ownable {
     );
     
     constructor(address _aggregator, address _bridge) Ownable(msg.sender) {
-        require(_aggregator != address(0), "Invalid aggregator");
-        require(_bridge != address(0), "Invalid bridge");
+        // Validate with custom errors
+        if (_aggregator == address(0)) revert InvalidAddress();
+        if (_bridge == address(0)) revert InvalidAddress();
+        
         aggregator = _aggregator;
         bridge = _bridge;
     }
@@ -40,19 +46,28 @@ contract EtherlinkExecutor is Ownable {
         // Transfer tokens from bridge
         token.safeTransferFrom(bridge, address(this), amountIn);
         
-        // Set approval using forceApprove
-        token.forceApprove(aggregator, amountIn);
+        // Reset approval to prevent front-running
+        token.safeApprove(aggregator, 0);
+        token.safeApprove(aggregator, amountIn);
         
-        // Execute swap
-        (bool success, ) = aggregator.call(swapData);
-        require(success, "Swap failed");
+        // Execute swap with error data
+        (bool success, bytes memory data) = aggregator.call(swapData);
+        if (!success) revert SwapFailed(data);
         
-        // Emit event
-        emit SwapExecuted(orderId, chunkIndex, tokenIn, tokenOut, amountIn, 0);
+        // Calculate actual output
+        uint256 amountOut = IERC20(tokenOut).balanceOf(address(this));
+        
+        // Emit event with actual values
+        emit SwapExecuted(orderId, chunkIndex, tokenIn, tokenOut, amountIn, amountOut);
     }
     
     function setBridge(address _bridge) external onlyOwner {
-        require(_bridge != address(0), "Invalid bridge");
+        if (_bridge == address(0)) revert InvalidAddress();
         bridge = _bridge;
+    }
+    
+    // Emergency function to recover tokens
+    function recoverToken(address tokenAddress, uint256 amount) external onlyOwner {
+        IERC20(tokenAddress).safeTransfer(owner(), amount);
     }
 }
