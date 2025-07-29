@@ -1,12 +1,12 @@
 import {
   FusionSDK,
-  NetworkEnum,
   OrderStatus,
   PrivateKeyProviderConnector,
   type Web3Like
 } from "@1inch/fusion-sdk";
-import { Wallet, formatUnits, JsonRpcProvider } from "ethers";
+import { Wallet, formatUnits, JsonRpcProvider, getAddress } from "ethers";
 import * as dotenv from 'dotenv';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -16,7 +16,7 @@ const validateEnv = () => {
     'ETHERLINK_RPC_URL', 
     'PRIVATE_KEY', 
     'INCH_API_KEY',
-    'USDC_ADDRESS',
+    'MOCK_USDC_ADDRESS',
     'WXTZ_ADDRESS'
   ];
   
@@ -45,6 +45,29 @@ class EtherlinkProviderConnector implements Web3Like {
   extend() {}
 }
 
+// Verify token addresses with 1inch API
+async function verifyTokenAddresses(chainId: number, tokenAddresses: string[]) {
+  try {
+    const response = await axios.get(
+      `https://api.1inch.dev/token/v1.2/${chainId}/token-list`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.INCH_API_KEY}`
+        }
+      }
+    );
+    
+    const tokenList = response.data.tokens.map((t: any) => t.address.toLowerCase());
+    
+    return tokenAddresses.every(addr => 
+      tokenList.includes(getAddress(addr).toLowerCase())
+    );
+  } catch (error) {
+    console.error('Token verification failed:', error);
+    return false;
+  }
+}
+
 async function main() {
   validateEnv();
   
@@ -59,19 +82,31 @@ async function main() {
     new EtherlinkProviderConnector(process.env.ETHERLINK_RPC_URL!)
   );
 
-  // Initialize Fusion SDK
+  // Initialize Fusion SDK with Etherlink chain ID
+  const chainId = 128123; // Etherlink Ghostnet
   const sdk = new FusionSDK({
     url: "https://api.1inch.dev/fusion",
-    network: NetworkEnum.ETHEREUM,
+    network: chainId as any, // Bypass type check for custom chain
     blockchainProvider: connector,
     authKey: process.env.INCH_API_KEY!,
+    chainId: chainId
   });
+
+  // Verify token addresses
+  const tokenAddresses = [
+    process.env.WXTZ_ADDRESS!,
+    process.env.MOCK_USDC_ADDRESS!
+  ];
+  
+  if (!(await verifyTokenAddresses(chainId, tokenAddresses))) {
+    throw new Error('One or more token addresses are not recognized by 1inch');
+  }
 
   // Swap parameters: wXTZ to USDC
   const params = {
-    fromTokenAddress: process.env.WXTZ_ADDRESS!,
-    toTokenAddress: process.env.MUSDC_ADDRESS!,
-    amount: "1000000000000000", // 0.001 wXTZ (18 decimals)
+    fromTokenAddress: getAddress(process.env.WXTZ_ADDRESS!),
+    toTokenAddress: getAddress(process.env.MOCK_USDC_ADDRESS!),
+    amount: "10000000000000000", // 0.01 wXTZ (18 decimals)
     walletAddress: walletAddress,
     source: "fusion-chrono"
   };
@@ -94,7 +129,7 @@ async function main() {
     
     console.log('\nOrder Submitted:');
     console.log(`  Order Hash: ${orderInfo.orderHash}`);
-    console.log(`  Monitor: https://fusion.1inch.io/#/128123/order/${orderInfo.orderHash}`);
+    console.log(`  Monitor: https://fusion.1inch.io/#/${chainId}/order/${orderInfo.orderHash}`);
 
     // Monitor order status
     console.log('\nMonitoring order status...');
@@ -131,6 +166,17 @@ async function main() {
     
   } catch (error) {
     console.error('\n❌ Fatal error:', error);
+    
+    // Detailed error diagnostics
+    if (error.response) {
+      console.error('API Response Data:', error.response.data);
+      console.error('API Request Config:', {
+        url: error.config.url,
+        method: error.config.method,
+        headers: error.config.headers,
+        params: error.config.params
+      });
+    }
   }
 }
 
