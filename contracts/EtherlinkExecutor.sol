@@ -14,10 +14,11 @@ contract EtherlinkExecutor is Ownable {
     // Custom errors for gas efficiency
     error InvalidAddress();
     error SwapFailed(bytes data);
+    error InsufficientOutput();
     
     event SwapExecuted(
-        bytes32 indexed orderId, // indexed for cheaper filtering
-        uint256 chunkIndex,
+        bytes32 indexed orderId,    // indexed for cheaper filtering
+        uint256 indexed chunkIndex, // added index for better filtering
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
@@ -25,9 +26,10 @@ contract EtherlinkExecutor is Ownable {
     );
     
     constructor(address _aggregator, address _bridge) Ownable(msg.sender) {
-        // Validate with custom errors
-        if (_aggregator == address(0)) revert InvalidAddress();
-        if (_bridge == address(0)) revert InvalidAddress();
+        // Combined validation check saves gas
+        if (_aggregator == address(0) || _bridge == address(0)) {
+            revert InvalidAddress();
+        }
         
         aggregator = _aggregator;
         bridge = _bridge;
@@ -43,19 +45,29 @@ contract EtherlinkExecutor is Ownable {
     ) external onlyOwner {
         IERC20 token = IERC20(tokenIn);
         
-        // Transfer tokens from bridge
+        // Transfer tokens from bridge (single call)
         token.safeTransferFrom(bridge, address(this), amountIn);
         
-        // Reset approval to prevent front-running
-        token.safeApprove(aggregator, 0);
-        token.safeApprove(aggregator, amountIn);
+        // Optimized approval process
+        uint256 currentAllowance = token.allowance(address(this), aggregator);
+        if (currentAllowance < amountIn) {
+            token.forceApprove(aggregator, 0);  // Reset if needed
+            token.forceApprove(aggregator, amountIn);
+        }
+        
+        // Cache initial balance
+        uint256 initialBalance = IERC20(tokenOut).balanceOf(address(this));
         
         // Execute swap with error data
         (bool success, bytes memory data) = aggregator.call(swapData);
         if (!success) revert SwapFailed(data);
         
-        // Calculate actual output
-        uint256 amountOut = IERC20(tokenOut).balanceOf(address(this));
+        // Calculate actual output with overflow protection
+        uint256 finalBalance = IERC20(tokenOut).balanceOf(address(this));
+        uint256 amountOut = finalBalance - initialBalance;
+        
+        // Revert if no tokens received
+        if (amountOut == 0) revert InsufficientOutput();
         
         // Emit event with actual values
         emit SwapExecuted(orderId, chunkIndex, tokenIn, tokenOut, amountIn, amountOut);
@@ -66,7 +78,7 @@ contract EtherlinkExecutor is Ownable {
         bridge = _bridge;
     }
     
-    // Emergency function to recover tokens
+    // Add recovery function for safety
     function recoverToken(address tokenAddress, uint256 amount) external onlyOwner {
         IERC20(tokenAddress).safeTransfer(owner(), amount);
     }
