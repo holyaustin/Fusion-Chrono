@@ -24,7 +24,7 @@ const config: HardhatUserConfig = {
       accounts: [process.env.PRIVATE_KEY!]
     },
     etherlinkTestnet: {
-      url: process.env.ETHERLINK_RPC_URL2,
+      url: process.env.ETHERLINK_RPC_URL,
       accounts: [process.env.PRIVATE_KEY!],
       chainId: 128123,
       gasPrice: 40000000000, // 40 Gwei (higher than recommended min)

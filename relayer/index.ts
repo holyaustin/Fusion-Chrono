@@ -4,8 +4,8 @@ dotenv.config();
 
 // Config
 const SEPOLIA_RPC = process.env.SEPOLIA_RPC_URL!;
-const ETHEREUM_BRIDGE = "0x..."; // From deployment
-const EXECUTOR_ADDRESS = "0x..."; // From deployment
+const ETHEREUM_BRIDGE = "0xf96773998743b0bd985769f0eA249099C5939Dc8"; // From deployment
+const EXECUTOR_ADDRESS = "0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F"; // From deployment
 const INCH_API_KEY = process.env.INCH_API_KEY!;
 
 // Initialize providers
