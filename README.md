@@ -28,3 +28,27 @@ ETHEREUM_BRIDGE_ADDRESS="0xf96773998743b0bd985769f0eA249099C5939Dc8"
 Executor deployed to: 0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F
 Final Config:
 EXECUTOR_ADDRESS="0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F"
+
+// Full Contract ABIs including function signatures
+const TWAP_ABI = [
+  // Events
+  "event ChunkInitiated(bytes32 orderId, uint256 chunkIndex, address tokenIn, address tokenOut, uint256 amount)",
+  
+  // Functions (if needed)
+];
+
+const BRIDGE_ABI = [
+  // Events
+  "event CrossChainTransfer(bytes32 indexed orderId, uint256 chunkIndex, address token, uint256 amount, address recipient)",
+  
+  // Functions - ADDED TO FIX ERROR
+  "function lockTokens(bytes32 orderId, uint256 chunkIndex, address token, uint256 amount, address recipient)"
+];
+
+const EXECUTOR_ABI = [
+  // Events
+  "event SwapExecuted(bytes32 indexed orderId, uint256 indexed chunkIndex, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)",
+  
+  // Functions - ADDED TO FIX ERROR
+  "function executeSwap(bytes32 orderId, uint256 chunkIndex, address tokenIn, address tokenOut, uint256 amount, bytes calldata swapData) external"
+];

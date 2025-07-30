@@ -3,284 +3,182 @@ import * as dotenv from 'dotenv';
 import axios from 'axios';
 dotenv.config();
 
-// Validate environment variables
-const requiredEnvVars = [
-  'SEPOLIA_RPC_URL',
-  'ETHERLINK_TESTNET_RPC_URL',
-  'ETHEREUM_BRIDGE_ADDRESS',
-  'TWAP_MANAGER_ADDRESS',
-  'EXECUTOR_ADDRESS',
-  'INCH_API_KEY',
-  'PRIVATE_KEY',
-  'DEFAULT_TOKEN_OUT'
-];
+// Validate env vars
+const requiredVars = ['SEPOLIA_RPC_URL','ETHERLINK_TESTNET_RPC_URL','ETHEREUM_BRIDGE_ADDRESS','TWAP_MANAGER_ADDRESS','EXECUTOR_ADDRESS','INCH_API_KEY','PRIVATE_KEY','DEFAULT_TOKEN_OUT'];
+for (const envVar of requiredVars) if (!process.env[envVar]) throw new Error(`Missing ${envVar}`);
 
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    throw new Error(`Missing required environment variable: ${envVar}`);
-  }
-}
-
-// Configuration from environment
+// Config
 const SEPOLIA_RPC = process.env.SEPOLIA_RPC_URL!;
 const ETHERLINK_RPC = process.env.ETHERLINK_TESTNET_RPC_URL!;
-const ETHEREUM_BRIDGE_ADDRESS = process.env.ETHEREUM_BRIDGE_ADDRESS!;
-const TWAP_MANAGER_ADDRESS = process.env.TWAP_MANAGER_ADDRESS!;
-const EXECUTOR_ADDRESS = process.env.EXECUTOR_ADDRESS!;
+const ETH_BRIDGE_ADDR = process.env.ETHEREUM_BRIDGE_ADDRESS!;
+const TWAP_MGR_ADDR = process.env.TWAP_MANAGER_ADDRESS!;
+const EXEC_ADDR = process.env.EXECUTOR_ADDRESS!;
 const INCH_API_KEY = process.env.INCH_API_KEY!;
-const PRIVATE_KEY = process.env.PRIVATE_KEY!;
-const DEFAULT_TOKEN_OUT = process.env.DEFAULT_TOKEN_OUT!;
+const PRIV_KEY = process.env.PRIVATE_KEY!;
+const DEF_TOKEN_OUT = process.env.DEFAULT_TOKEN_OUT!;
 
-// Initialize providers
-const sepoliaProvider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
-const etherlinkProvider = new ethers.JsonRpcProvider(ETHERLINK_RPC);
+// Providers
+const sepProvider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
+const etlProvider = new ethers.JsonRpcProvider(ETHERLINK_RPC);
 
-// Full Contract ABIs including function signatures
-const TWAP_ABI = [
-  // Events
-  "event ChunkInitiated(bytes32 orderId, uint256 chunkIndex, address tokenIn, address tokenOut, uint256 amount)",
-  
-  // Functions (if needed)
-];
+// ABIs
+const TWAP_ABI = ["event ChunkInitiated(bytes32 orderId, uint256 chunkIndex, address tokenIn, address tokenOut, uint256 amount)"];
+const BRIDGE_ABI = ["event CrossChainTransfer(bytes32 indexed orderId, uint256 chunkIndex, address token, uint256 amount, address recipient)","function lockTokens(bytes32 orderId, uint256 chunkIndex, address token, uint256 amount, address recipient)"];
+const EXEC_ABI = ["event SwapExecuted(bytes32 indexed orderId, uint256 indexed chunkIndex, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)","function executeSwap(bytes32 orderId, uint256 chunkIndex, address tokenIn, address tokenOut, uint256 amount, bytes calldata swapData) external"];
 
-const BRIDGE_ABI = [
-  // Events
-  "event CrossChainTransfer(bytes32 indexed orderId, uint256 chunkIndex, address token, uint256 amount, address recipient)",
-  
-  // Functions - ADDED TO FIX ERROR
-  "function lockTokens(bytes32 orderId, uint256 chunkIndex, address token, uint256 amount, address recipient)"
-];
+// Contracts
+const twap = new ethers.Contract(TWAP_MGR_ADDR, TWAP_ABI, sepProvider);
+const bridge = new ethers.Contract(ETH_BRIDGE_ADDR, BRIDGE_ABI, sepProvider);
+const executor = new ethers.Contract(EXEC_ADDR, EXEC_ABI, etlProvider);
 
-const EXECUTOR_ABI = [
-  // Events
-  "event SwapExecuted(bytes32 indexed orderId, uint256 indexed chunkIndex, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)",
-  
-  // Functions - ADDED TO FIX ERROR
-  "function executeSwap(bytes32 orderId, uint256 chunkIndex, address tokenIn, address tokenOut, uint256 amount, bytes calldata swapData) external"
-];
+// Wallets
+const sepWallet = new ethers.Wallet(PRIV_KEY, sepProvider);
+const etlWallet = new ethers.Wallet(PRIV_KEY, etlProvider);
 
-// Initialize contracts
-const twap = new ethers.Contract(
-  TWAP_MANAGER_ADDRESS,
-  TWAP_ABI,
-  sepoliaProvider
-);
+// Stores
+const orderStore: Record<string, string> = {};
+const processedEvents: Set<string> = new Set();
 
-const bridge = new ethers.Contract(
-  ETHEREUM_BRIDGE_ADDRESS,
-  BRIDGE_ABI,
-  sepoliaProvider
-);
-
-const executor = new ethers.Contract(
-  EXECUTOR_ADDRESS,
-  EXECUTOR_ABI,
-  etherlinkProvider
-);
-
-// Wallet for signing transactions
-const sepoliaWallet = new ethers.Wallet(PRIVATE_KEY, sepoliaProvider);
-const etherlinkWallet = new ethers.Wallet(PRIVATE_KEY, etherlinkProvider);
-
-// In-memory order store
-const orderStore: Record<string, { tokenOut: string }> = {};
-
-// Enhanced logging with timestamp
-function logWithTimestamp(message: string) {
-  console.log(`[${new Date().toISOString()}] ${message}`);
+// Logging
+function logTs(msg: string) {
+  console.log(`[${new Date().toISOString()}] ${msg}`);
 }
 
-// Listen to events
-twap.on("ChunkInitiated", async (orderId, chunkIndex, tokenIn, tokenOut, amount) => {
-  logWithTimestamp(`Chunk initiated: ${orderId} [Chunk ${chunkIndex}]`);
-  
-  // Store tokenOut for this order
-  orderStore[orderId] = { tokenOut };
-  
-  try {
-    logWithTimestamp("Locking tokens on Ethereum bridge...");
-    
-    // Create type-safe contract with signer
-    const bridgeWithSigner = bridge.connect(sepoliaWallet) as ethers.Contract & {
-      lockTokens: (
-        orderId: string,
-        chunkIndex: bigint,
-        token: string,
-        amount: bigint,
-        recipient: string
-      ) => Promise<ethers.ContractTransactionResponse>;
-    };
-    
-    const tx = await bridgeWithSigner.lockTokens(
-      orderId,
-      chunkIndex,
-      tokenIn,
-      amount,
-      EXECUTOR_ADDRESS
-    );
-    
-    await tx.wait();
-    logWithTimestamp(`✅ Tokens locked: ${tx.hash}`);
-  } catch (error: any) {
-    logWithTimestamp(`❌ Lock tokens failed: ${error.shortMessage || error.message}`);
-  }
-});
-
-bridge.on("CrossChainTransfer", async (orderId, chunkIndex, token, amount, recipient) => {
-  logWithTimestamp(`Cross-chain transfer: ${orderId} [Chunk ${chunkIndex}]`);
-  
-  try {
-    // Get tokenOut from store or fallback to default
-    let tokenOut = orderStore[orderId]?.tokenOut;
-    if (!tokenOut) {
-      logWithTimestamp("⚠️ Using default tokenOut from .env");
-      tokenOut = DEFAULT_TOKEN_OUT;
-    }
-    
-    // Get 1inch swap data
-    const swapData = await get1InchSwapData(token, tokenOut, amount);
-    
-    // Execute on Etherlink
-    await executeOnEtherlink(orderId, chunkIndex, token, tokenOut, amount, swapData);
-  } catch (error: any) {
-    logWithTimestamp(`❌ Cross-chain execution failed: ${error.shortMessage || error.message}`);
-  }
-});
-
-// Listen to swap execution events
-executor.on("SwapExecuted", (orderId, chunkIndex, tokenIn, tokenOut, amountIn, amountOut) => {
-  logWithTimestamp(`✅ Swap executed: ${orderId} [Chunk ${chunkIndex}]`);
-  logWithTimestamp(`   Input: ${ethers.formatUnits(amountIn, 18)} ${tokenIn}`);
-  logWithTimestamp(`  Output: ${ethers.formatUnits(amountOut, 6)} ${tokenOut}`);
-});
-
-async function get1InchSwapData(
-  tokenIn: string,
-  tokenOut: string,
-  amount: bigint
-): Promise<string> {
-  try {
-    logWithTimestamp("Fetching 1inch swap data...");
-    const response = await axios.get(
-      `https://api.1inch.dev/swap/v5.2/128123/swap`,
-      {
-        params: {
-          src: tokenIn,
-          dst: tokenOut,
-          amount: amount.toString(),
-          from: EXECUTOR_ADDRESS,
-          slippage: '1',
-          disableEstimate: 'true'
-        },
-        headers: { 
-          'Authorization': `Bearer ${INCH_API_KEY}`,
-          'Accept': 'application/json'
-        }
-      }
-    );
-    
-    return response.data.tx.data;
-  } catch (error: any) {
-    if (axios.isAxiosError(error)) {
-      throw new Error(`1inch API error: ${error.response?.data?.description || error.message}`);
-    }
-    throw new Error(`Unknown error: ${error.message}`);
-  }
+// Get event topic
+function getEventTopic(contract: ethers.Contract, eventName: string): string {
+  return contract.interface.getEvent(eventName).topicHash;
 }
 
-async function executeOnEtherlink(
-  orderId: string,
-  chunkIndex: bigint,
-  tokenIn: string,
-  tokenOut: string,
-  amount: bigint,
-  swapData: string
-) {
-  try {
-    logWithTimestamp(`Executing swap on Etherlink: ${orderId} [Chunk ${chunkIndex}]`);
-    
-    // Create type-safe contract with signer
-    const executorWithSigner = executor.connect(etherlinkWallet) as ethers.Contract & {
-      executeSwap: (
-        orderId: string,
-        chunkIndex: bigint,
-        tokenIn: string,
-        tokenOut: string,
-        amount: bigint,
-        swapData: string,
-        overrides?: ethers.ContractMethodArgs<any>[0]
-      ) => Promise<ethers.ContractTransactionResponse>;
-      
-      estimateGas?: {
-        executeSwap: (
-          orderId: string,
-          chunkIndex: bigint,
-          tokenIn: string,
-          tokenOut: string,
-          amount: bigint,
-          swapData: string
-        ) => Promise<bigint>;
-      };
-    };
-    
-    // Prepare transaction parameters with default gas limit
-    const txParams = {
-      gasLimit: 3_000_000n // Sufficient for most Etherlink swaps
-    };
-    
-    // Attempt gas estimation
+// Poll events
+async function pollEvents() {
+  const INTERVAL = 15000;
+  let lastBlock = await sepProvider.getBlockNumber() - 1;
+
+  while (true) {
     try {
-      if (executorWithSigner.estimateGas?.executeSwap) {
-        const estimatedGas = await executorWithSigner.estimateGas.executeSwap(
-          orderId,
-          chunkIndex,
-          tokenIn,
-          tokenOut,
-          amount,
-          swapData
-        );
-        txParams.gasLimit = estimatedGas * 120n / 100n; // 20% buffer
-        logWithTimestamp(`Estimated gas: ${txParams.gasLimit.toString()}`);
+      const currentBlock = await sepProvider.getBlockNumber();
+      if (currentBlock > lastBlock) {
+        logTs(`Polling blocks ${lastBlock+1} to ${currentBlock}`);
+        
+        // Poll ChunkInitiated
+        const chunkLogs = await sepProvider.getLogs({
+          address: twap.target,
+          topics: [getEventTopic(twap, "ChunkInitiated")],
+          fromBlock: lastBlock + 1,
+          toBlock: currentBlock
+        });
+        for (const log of chunkLogs) {
+          const eventKey = `${log.transactionHash}-${log.index}`;
+          if (processedEvents.has(eventKey)) continue;
+          processedEvents.add(eventKey);
+          const event = twap.interface.parseLog(log);
+          handleChunkInitiated(event!.args[0], event!.args[1], event!.args[2], event!.args[3], event!.args[4]);
+        }
+        
+        // Poll CrossChainTransfer
+        const bridgeLogs = await sepProvider.getLogs({
+          address: bridge.target,
+          topics: [getEventTopic(bridge, "CrossChainTransfer")],
+          fromBlock: lastBlock + 1,
+          toBlock: currentBlock
+        });
+        for (const log of bridgeLogs) {
+          const eventKey = `${log.transactionHash}-${log.index}`;
+          if (processedEvents.has(eventKey)) continue;
+          processedEvents.add(eventKey);
+          const event = bridge.interface.parseLog(log);
+          handleCrossChainTransfer(event!.args[0], event!.args[1], event!.args[2], event!.args[3], event!.args[4]);
+        }
+        
+        lastBlock = currentBlock;
       }
-    } catch (estError) {
-      logWithTimestamp(`⚠️ Gas estimation failed: ${(estError as Error).message}`);
+      await new Promise(r => setTimeout(r, INTERVAL));
+    } catch (error: any) {
+      logTs(`Poll error: ${error.shortMessage || error.message}`);
+      await new Promise(r => setTimeout(r, INTERVAL));
     }
-    
-    // Execute transaction
-    const tx = await executorWithSigner.executeSwap(
-      orderId,
-      chunkIndex,
-      tokenIn,
-      tokenOut,
-      amount,
-      swapData,
-      txParams  // Transaction overrides as 7th argument
-    );
-    
-    logWithTimestamp(`Transaction submitted: ${tx.hash}`);
-    const receipt = await tx.wait();
-    
-    if (receipt?.status === 1) {
-      logWithTimestamp(`✅ Execution confirmed in block ${receipt.blockNumber}`);
-    } else {
-      logWithTimestamp(`❌ Execution failed in block ${receipt?.blockNumber}`);
+  }
+}
+
+function handleChunkInitiated(orderId: string, chunkIndex: bigint, tokenIn: string, tokenOut: string, amount: bigint) {
+  logTs(`Chunk initiated: ${orderId} [${chunkIndex}]`);
+  orderStore[orderId] = tokenOut;
+  (async () => {
+    try {
+      logTs("Locking tokens...");
+      const bridgeWithSigner = bridge.connect(sepWallet);
+      const tx = await bridgeWithSigner.lockTokens(orderId, chunkIndex, tokenIn, amount, EXEC_ADDR);
+      await tx.wait();
+      logTs(`✅ Tokens locked: ${tx.hash}`);
+    } catch (error: any) {
+      logTs(`Lock failed: ${error.shortMessage || error.message}`);
     }
+  })();
+}
+
+function handleCrossChainTransfer(orderId: string, chunkIndex: bigint, token: string, amount: bigint, recipient: string) {
+  logTs(`Cross-chain: ${orderId} [${chunkIndex}]`);
+  (async () => {
+    try {
+      const tokenOut = orderStore[orderId] || DEF_TOKEN_OUT;
+      if (!orderStore[orderId]) logTs("⚠️ Using default tokenOut");
+      const swapData = await get1InchSwapData(token, tokenOut, amount);
+      await executeOnEtherlink(orderId, chunkIndex, token, tokenOut, amount, swapData);
+    } catch (error: any) {
+      logTs(`Exec failed: ${error.shortMessage || error.message}`);
+    }
+  })();
+}
+
+// Listen to swap execution
+executor.on("SwapExecuted", (orderId, chunkIndex, tokenIn, tokenOut, amountIn, amountOut) => {
+  logTs(`✅ Swap executed: ${orderId} [${chunkIndex}]`);
+  logTs(`   In: ${ethers.formatUnits(amountIn, 18)} ${tokenIn}`);
+  logTs(`  Out: ${ethers.formatUnits(amountOut, 6)} ${tokenOut}`);
+});
+
+async function get1InchSwapData(tokenIn: string, tokenOut: string, amount: bigint): Promise<string> {
+  try {
+    logTs("Fetching 1inch data...");
+    const res = await axios.get(`https://api.1inch.dev/swap/v5.2/128123/swap`, {
+      params: {src: tokenIn, dst: tokenOut, amount: amount.toString(), from: EXEC_ADDR, slippage: '1', disableEstimate: 'true'},
+      headers: {'Authorization': `Bearer ${INCH_API_KEY}`, 'Accept': 'application/json'}
+    });
+    return res.data.tx.data;
   } catch (error: any) {
-    logWithTimestamp(`❌ Execution error: ${error.shortMessage || error.message}`);
-    
-    // Implement retry logic
-    logWithTimestamp("⚠️ Retrying swap execution in 15 seconds...");
-    await new Promise(resolve => setTimeout(resolve, 15000));
+    if (axios.isAxiosError(error)) throw new Error(`1inch error: ${error.response?.data?.description || error.message}`);
+    throw new Error(`Error: ${error.message}`);
+  }
+}
+
+async function executeOnEtherlink(orderId: string, chunkIndex: bigint, tokenIn: string, tokenOut: string, amount: bigint, swapData: string) {
+  try {
+    logTs(`Executing on Etherlink: ${orderId} [${chunkIndex}]`);
+    const executorWithSigner = executor.connect(etlWallet);
+    const tx = await executorWithSigner.executeSwap(orderId, chunkIndex, tokenIn, tokenOut, amount, swapData, {gasLimit: 3_000_000n});
+    logTs(`TX submitted: ${tx.hash}`);
+    const receipt = await tx.wait();
+    receipt?.status === 1 
+      ? logTs(`✅ Confirmed in block ${receipt.blockNumber}`)
+      : logTs(`❌ Failed in block ${receipt?.blockNumber}`);
+  } catch (error: any) {
+    logTs(`Exec error: ${error.shortMessage || error.message}`);
+    logTs("⚠️ Retrying in 15s...");
+    await new Promise(r => setTimeout(r, 15000));
     return executeOnEtherlink(orderId, chunkIndex, tokenIn, tokenOut, amount, swapData);
   }
 }
 
-// Startup log
-logWithTimestamp("🚀 Relayer started. Listening for events...");
-logWithTimestamp(`Sepolia RPC: ${SEPOLIA_RPC}`);
-logWithTimestamp(`Etherlink RPC: ${ETHERLINK_RPC}`);
-logWithTimestamp(`TWAP Manager: ${TWAP_MANAGER_ADDRESS}`);
-logWithTimestamp(`Ethereum Bridge: ${ETHEREUM_BRIDGE_ADDRESS}`);
-logWithTimestamp(`Executor: ${EXECUTOR_ADDRESS}`);
-logWithTimestamp(`Default Token Out: ${DEFAULT_TOKEN_OUT}`);
-logWithTimestamp("--------------------------------------------");
+// Startup
+logTs("🚀 Relayer started. Polling events...");
+logTs(`Sepolia: ${SEPOLIA_RPC}`);
+logTs(`Etherlink: ${ETHERLINK_RPC}`);
+logTs(`TWAP: ${TWAP_MGR_ADDR}`);
+logTs(`Bridge: ${ETH_BRIDGE_ADDR}`);
+logTs(`Executor: ${EXEC_ADDR}`);
+logTs(`Def Token: ${DEF_TOKEN_OUT}`);
+pollEvents();
+
+// Exit handlers
+process.on('SIGINT', () => { logTs("🛑 SIGINT received"); process.exit(0); });
+process.on('SIGTERM', () => { logTs("🛑 SIGTERM received"); process.exit(0); });
