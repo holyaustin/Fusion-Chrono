@@ -6,10 +6,12 @@ dotenv.config();
 
 const config: HardhatUserConfig = {
   solidity: "0.8.24",
+  /**
   typechain: {
     outDir: "typechain-types",
     target: "ethers-v6"
   },
+   */
   networks: {
     hardhat: {
       chainId: 31337,
@@ -22,6 +24,12 @@ const config: HardhatUserConfig = {
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL,
       accounts: [process.env.PRIVATE_KEY!]
+    },
+        // Optimism Sepolia
+    optimismSepolia: {
+      url: "https://sepolia.optimism.io",
+      accounts: [process.env.PRIVATE_KEY || ""],
+      chainId: 11155420, // OP Sepolia chain ID (EVM)
     },
     etherlinkTestnet: {
       url: process.env.ETHERLINK_RPC_URL,
