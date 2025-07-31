@@ -31,6 +31,15 @@ const config: HardhatUserConfig = {
       accounts: [process.env.PRIVATE_KEY || ""],
       chainId: 11155420, // OP Sepolia chain ID (EVM)
     },
+
+        // Etherlink Testnet
+    etherlinkTestnet: {
+      url: "https://node.ghostnet.etherlink.com",
+      accounts: [process.env.PRIVATE_KEY || ""],
+      chainId: 128123,
+    },
+  },
+  /**
     etherlinkTestnet: {
       url: process.env.ETHERLINK_RPC_URL,
       accounts: [process.env.PRIVATE_KEY!],
@@ -39,6 +48,7 @@ const config: HardhatUserConfig = {
       gasMultiplier: 1.5, // 50% buffer for estimation errors
       timeout: 180000 // 3 minutes timeout
     },
+     */
     etherlinkMainnet: {
       url: "https://node.mainnet.etherlink.com",
       accounts: [process.env.PRIVATE_KEY!],
@@ -48,8 +58,8 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
-      etherlinkMainnet: "DUMMY",
-      etherlinkTestnet: "DUMMY",
+      etherlinkMainnet: "abc",
+      etherlinkTestnet: "abc",
     },
     customChains: [
       {
@@ -68,8 +78,20 @@ const config: HardhatUserConfig = {
           browserURL: "https://testnet.explorer.etherlink.com",
         },
       },
+            {
+        network: "optimismSepolia",
+        chainId: 11155420,
+        urls: {
+          apiURL: "https://sepolia-optimism.etherscan.io/api",
+          browserURL: "https://sepolia-optimism.etherscan.io",
+        },
+      },
     ],
   }
+
+    mocha: {
+    timeout: 300000,
+  },
 };
 
 export default config;
