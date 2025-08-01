@@ -1,49 +1,72 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-// ✅ Use OApp for bidirectional messaging
-import "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OApp.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract CrossChainTWAP is OApp {
+/**
+ * @title CrossChainTWAP
+ * @dev Schedules time-weighted average price (TWAP) swaps.
+ * Users on Etherlink can schedule swaps that execute on Optimism Sepolia via 1inch Fusion+.
+ * This contract only stores orders and emits events — no cross-chain logic.
+ */
+contract CrossChainTWAP {
     using SafeERC20 for IERC20;
 
+    // Struct to represent a scheduled swap
     struct SwapOrder {
-        address owner;
-        address fromToken;
-        address toToken;
-        uint256 totalAmount;
-        uint256 numSlices;
-        uint256 interval;
-        uint256 startTime;
-        uint256 executedSlices;
-        uint256 minAvgReturn;
-        bool canceled;
+        address owner;           // User who scheduled the swap
+        address fromToken;       // Token to swap from (e.g., WETH)
+        address toToken;         // Token to swap to (e.g., USDC)
+        uint256 totalAmount;     // Total amount to swap
+        uint256 numSlices;       // Number of time slices
+        uint256 interval;        // Time between slices (seconds)
+        uint256 startTime;       // When the first slice can execute
+        uint256 executedSlices;  // How many slices have been executed
+        uint256 minAvgReturn;    // Minimum total return expected
+        bool canceled;           // Whether the swap was canceled
     }
 
+    // Array of all orders
     SwapOrder[] public orders;
+
+    // Maps user → list of their order IDs
     mapping(address => uint256[]) public userOrders;
 
-    address public optimismExecutor;
-    uint32 public constant OPTIMISM_ENDPOINT_ID = 10132;
+    // Event emitted when a swap is scheduled
+    event SwapScheduled(
+        uint256 indexed orderId,
+        address indexed owner,
+        address fromToken,
+        address toToken,
+        uint256 totalAmount
+    );
 
-    event SwapScheduled(uint256 indexed orderId, address indexed owner, uint256 totalAmount);
-    event SliceSent(uint256 indexed orderId, uint256 sliceId, uint256 amount);
-    event SliceResultReceived(uint256 indexed orderId, uint256 amountIn, uint256 amountOut);
+    // Event emitted when a slice is executed (off-chain)
+    event SliceExecuted(
+        uint256 indexed orderId,
+        uint256 sliceId,
+        uint256 amountIn,
+        uint256 amountOut
+    );
 
-    struct SwapParams {
-        address fromToken;
-        address toToken;
-        uint256 amount;
-        uint256 minReturn;
-        address refundAddress;
-    }
+    // Event emitted when swap is canceled
+    event SwapCanceled(uint256 indexed orderId);
 
-    constructor(address _oapp, address _optimismExecutor) OApp(_oapp) {
-        optimismExecutor = _optimismExecutor;
-    }
+    /**
+     * @dev Constructor (no setup needed)
+     */
+    constructor() {}
 
+    /**
+     * @dev Schedule a new TWAP swap
+     * @param fromToken Token to swap from
+     * @param toToken Token to swap to
+     * @param totalAmount Total amount to swap
+     * @param numSlices Number of time slices
+     * @param interval Time between slices (seconds)
+     * @param minAvgReturn Minimum total return expected
+     */
     function scheduleSwap(
         address fromToken,
         address toToken,
@@ -52,9 +75,9 @@ contract CrossChainTWAP is OApp {
         uint256 interval,
         uint256 minAvgReturn
     ) external {
-        require(numSlices > 0, "Slices > 0");
-        require(interval >= 30, "Interval >= 30s");
-        require(totalAmount > 0, "Amount > 0");
+        require(numSlices > 0, "CrossChainTWAP: numSlices > 0");
+        require(interval >= 30, "CrossChainTWAP: interval >= 30s");
+        require(totalAmount > 0, "CrossChainTWAP: totalAmount > 0");
 
         uint256 orderId = orders.length;
         orders.push(SwapOrder({
@@ -69,60 +92,39 @@ contract CrossChainTWAP is OApp {
             minAvgReturn: minAvgReturn,
             canceled: false
         }));
+
         userOrders[msg.sender].push(orderId);
 
+        // Transfer tokens to this contract
         IERC20(fromToken).safeTransferFrom(msg.sender, address(this), totalAmount);
-        emit SwapScheduled(orderId, msg.sender, totalAmount);
+
+        emit SwapScheduled(orderId, msg.sender, fromToken, toToken, totalAmount);
     }
 
-    function executeNextSlice(uint256 orderId) external {
-        SwapOrder storage order = orders[orderId];
-        require(!order.canceled, "Canceled");
-        require(order.executedSlices < order.numSlices, "Completed");
-        require(block.timestamp >= order.startTime + (order.interval * order.executedSlices), "Too early");
-
-        uint256 amountPerSlice = order.totalAmount / order.numSlices;
-        uint256 sliceAmount = (order.executedSlices + 1 == order.numSlices)
-            ? order.totalAmount - (amountPerSlice * order.executedSlices)
-            : amountPerSlice;
-
-        SwapParams memory params = SwapParams({
-            fromToken: order.fromToken,
-            toToken: order.toToken,
-            amount: sliceAmount,
-            minReturn: (order.minAvgReturn * sliceAmount) / order.totalAmount,
-            refundAddress: order.owner
-        });
-
-        bytes memory payload = abi.encode(params);
-
-        _send(
-            OPTIMISM_ENDPOINT_ID,
-            bytes32(uint256(uint160(optimismExecutor))),
-            payload,
-            _defaultAdapterParams()
-        );
-
-        order.executedSlices++;
-        emit SliceSent(orderId, order.executedSlices, sliceAmount);
+    /**
+     * @dev Get the number of orders for a user
+     */
+    function getOrderCount(address user) external view returns (uint256) {
+        return userOrders[user].length;
     }
 
-    // ✅ Now valid: OApp inherits OAppReceiver → has onlyEndpoint
-    function receiveMessage(
-        uint32, // _srcChainId
-        bytes32, // _srcAddress
-        bytes memory _payload,
-        bytes memory // _extraData
-    ) external virtual override onlyEndpoint {
-        (uint256 amountOut, uint256 amountIn, uint256 timestamp) = abi.decode(_payload, (uint256, uint256, uint256));
-        emit SliceResultReceived(0, amountIn, amountOut);
+    /**
+     * @dev Get a specific order by index
+     */
+    function getOrder(address user, uint256 index) external view returns (SwapOrder memory) {
+        require(index < userOrders[user].length, "CrossChainTWAP: index out of bounds");
+        uint256 orderId = userOrders[user][index];
+        return orders[orderId];
     }
 
-    function setOptimismExecutor(address _addr) external {
-        optimismExecutor = _addr;
-    }
-
-    function _defaultAdapterParams() internal pure returns (bytes memory) {
-        return abi.encodePacked(uint16(1), uint256(500000));
+    /**
+     * @dev Cancel a swap (only before any execution)
+     */
+    function cancelSwap(uint256 orderId) external {
+        require(orderId < orders.length, "CrossChainTWAP: invalid orderId");
+        require(orders[orderId].owner == msg.sender, "CrossChainTWAP: not owner");
+        require(orders[orderId].executedSlices == 0, "CrossChainTWAP: already started");
+        orders[orderId].canceled = true;
+        emit SwapCanceled(orderId);
     }
 }
