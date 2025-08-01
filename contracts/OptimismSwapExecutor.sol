@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@layerzerolabs/solidity-sdk-v2/contracts/lzApp/NonblockingLzApp.sol";
+import "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppReceiver.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-// This contract receives messages from Etherlink and triggers 1inch Fusion+ swaps.
-
-contract OptimismSwapExecutor is NonblockingLzApp {
+contract OptimismSwapExecutor is OAppReceiver {
     using SafeERC20 for IERC20;
 
     struct SwapParams {
@@ -19,10 +17,10 @@ contract OptimismSwapExecutor is NonblockingLzApp {
     }
 
     address public etherlinkTWAP;
-    uint16 public constant ETHERLINK_CHAIN_ID = 10208;
+    uint32 public constant ETHERLINK_ENDPOINT_ID = 10208;
 
     event SwapExecuted(
-        uint256 indexed sequence,
+        uint64 indexed nonce,
         address fromToken,
         address toToken,
         uint256 amountIn,
@@ -30,23 +28,22 @@ contract OptimismSwapExecutor is NonblockingLzApp {
         address refundAddress
     );
 
-    constructor(address _lzEndpoint, address _etherlinkTWAP) NonblockingLzApp(_lzEndpoint) {
+    constructor(address _oapp, address _etherlinkTWAP) OAppReceiver(_oapp) {
         etherlinkTWAP = _etherlinkTWAP;
     }
 
-    function _nonblockingLzReceive(
-        uint16, // _srcChainId
-        bytes memory, // _srcAddress
-        uint64, // _nonce
-        bytes memory _payload
-    ) internal override {
+    function receiveMessage(
+        uint32, // _srcChainId
+        bytes32, // _srcAddress
+        bytes memory _payload,
+        bytes memory // _extraData
+    ) external virtual override onlyEndpoint {
         SwapParams memory params = abi.decode(_payload, (SwapParams));
 
-        // In production: off-chain bot sees this event and calls 1inch API
         uint256 amountOut = (params.amount * 98) / 100; // mock
 
         emit SwapExecuted(
-            _nonce,
+            uint64(block.number),
             params.fromToken,
             params.toToken,
             params.amount,
@@ -54,21 +51,17 @@ contract OptimismSwapExecutor is NonblockingLzApp {
             params.refundAddress
         );
 
-        // Send result back to Etherlink
         bytes memory response = abi.encode(amountOut, params.amount, block.timestamp);
-        _sendToPeer(ETHERLINK_CHAIN_ID, addressToBytes(etherlinkTWAP), response);
+        _send(
+            ETHERLINK_ENDPOINT_ID,
+            bytes32(uint256(uint160(etherlinkTWAP))),
+            response,
+            _defaultAdapterParams()
+        );
     }
 
-    function _sendToPeer(
-        uint16 _dstChainId,
-        bytes memory _destination,
-        bytes memory _payload
-    ) internal {
-        _lzSend(_dstChainId, _destination, _payload, payable(0x0), address(0x0), bytes(""));
-    }
-
-    function addressToBytes(address _addr) internal pure returns (bytes memory) {
-        return abi.encodePacked(_addr);
+    function _defaultAdapterParams() internal pure returns (bytes memory) {
+        return abi.encodePacked(uint16(1), uint256(500000));
     }
 
     function setEtherlinkTWAP(address _addr) external {

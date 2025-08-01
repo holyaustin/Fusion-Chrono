@@ -38,8 +38,8 @@ const config: HardhatUserConfig = {
       accounts: [process.env.PRIVATE_KEY || ""],
       chainId: 128123,
     },
-  },
-  /**
+  
+   /**
     etherlinkTestnet: {
       url: process.env.ETHERLINK_RPC_URL,
       accounts: [process.env.PRIVATE_KEY!],
@@ -70,25 +70,24 @@ const config: HardhatUserConfig = {
           browserURL: "https://explorer.etherlink.com",
         },
       },
-      {
-        network: "etherlinkTestnet",
-        chainId: 128123,
-        urls: {
-          apiURL: "https://testnet.explorer.etherlink.com/api",
-          browserURL: "https://testnet.explorer.etherlink.com",
-        },
+    {
+      network: "etherlinkTestnet",
+      chainId: 128123,
+      urls: {
+        apiURL: "https://explorer.ghostnet.etherlink.com/api",
+        browserURL: "https://explorer.ghostnet.etherlink.com",
       },
-            {
-        network: "optimismSepolia",
-        chainId: 11155420,
-        urls: {
-          apiURL: "https://sepolia-optimism.etherscan.io/api",
-          browserURL: "https://sepolia-optimism.etherscan.io",
-        },
+    },
+    {
+      network: "optimismSepolia",
+      chainId: 11155420,
+      urls: {
+        apiURL: "https://sepolia-optimism.etherscan.io/api",
+        browserURL: "https://sepolia-optimism.etherscan.io",
       },
+    },
     ],
-  }
-
+  },
     mocha: {
     timeout: 300000,
   },

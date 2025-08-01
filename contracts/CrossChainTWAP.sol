@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@layerzerolabs/solidity-sdk-v2/contracts/lzApp/NonblockingLzApp.sol";
+// ✅ Use OApp for bidirectional messaging
+import "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OApp.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-// This contract allows users on Etherlink to schedule a TWAP swap that executes on Optimism Sepolia via 1inch Fusion+.
-
-contract CrossChainTWAP is NonblockingLzApp {
+contract CrossChainTWAP is OApp {
     using SafeERC20 for IERC20;
 
     struct SwapOrder {
@@ -26,9 +25,8 @@ contract CrossChainTWAP is NonblockingLzApp {
     SwapOrder[] public orders;
     mapping(address => uint256[]) public userOrders;
 
-    // Optimism Sepolia executor
     address public optimismExecutor;
-    uint16 public constant OPTIMISM_CHAIN_ID = 10132; // LayerZero chain ID
+    uint32 public constant OPTIMISM_ENDPOINT_ID = 10132;
 
     event SwapScheduled(uint256 indexed orderId, address indexed owner, uint256 totalAmount);
     event SliceSent(uint256 indexed orderId, uint256 sliceId, uint256 amount);
@@ -42,7 +40,7 @@ contract CrossChainTWAP is NonblockingLzApp {
         address refundAddress;
     }
 
-    constructor(address _lzEndpoint, address _optimismExecutor) NonblockingLzApp(_lzEndpoint) {
+    constructor(address _oapp, address _optimismExecutor) OApp(_oapp) {
         optimismExecutor = _optimismExecutor;
     }
 
@@ -56,6 +54,7 @@ contract CrossChainTWAP is NonblockingLzApp {
     ) external {
         require(numSlices > 0, "Slices > 0");
         require(interval >= 30, "Interval >= 30s");
+        require(totalAmount > 0, "Amount > 0");
 
         uint256 orderId = orders.length;
         orders.push(SwapOrder({
@@ -73,7 +72,6 @@ contract CrossChainTWAP is NonblockingLzApp {
         userOrders[msg.sender].push(orderId);
 
         IERC20(fromToken).safeTransferFrom(msg.sender, address(this), totalAmount);
-
         emit SwapScheduled(orderId, msg.sender, totalAmount);
     }
 
@@ -97,32 +95,34 @@ contract CrossChainTWAP is NonblockingLzApp {
         });
 
         bytes memory payload = abi.encode(params);
-        bytes memory executorAddress = abi.encodePacked(optimismExecutor);
 
-        _lzSend(
-            OPTIMISM_CHAIN_ID,
-            executorAddress,
+        _send(
+            OPTIMISM_ENDPOINT_ID,
+            bytes32(uint256(uint160(optimismExecutor))),
             payload,
-            payable(0x0),
-            address(0x0),
-            bytes("")
+            _defaultAdapterParams()
         );
 
         order.executedSlices++;
         emit SliceSent(orderId, order.executedSlices, sliceAmount);
     }
 
-    function _nonblockingLzReceive(
-        uint16, // _srcChainId
-        bytes memory, // _srcAddress
-        uint64, // _nonce
-        bytes memory _payload
-    ) internal override {
+    // ✅ Now valid: OApp inherits OAppReceiver → has onlyEndpoint
+    function receiveMessage(
+        uint32, // _srcChainId
+        bytes32, // _srcAddress
+        bytes memory _payload,
+        bytes memory // _extraData
+    ) external virtual override onlyEndpoint {
         (uint256 amountOut, uint256 amountIn, uint256 timestamp) = abi.decode(_payload, (uint256, uint256, uint256));
         emit SliceResultReceived(0, amountIn, amountOut);
     }
 
     function setOptimismExecutor(address _addr) external {
         optimismExecutor = _addr;
+    }
+
+    function _defaultAdapterParams() internal pure returns (bytes memory) {
+        return abi.encodePacked(uint16(1), uint256(500000));
     }
 }
