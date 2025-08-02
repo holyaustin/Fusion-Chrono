@@ -1,21 +1,39 @@
 // app/page.tsx
 'use client'
 
-import { useAccount, useWriteContract, useReadContract } from 'wagmi'
-import { etherlink } from 'wagmi/chains'
+import { useAccount, useConnect, useWriteContract } from 'wagmi'
 import { parseUnits } from 'viem'
 import { useState } from 'react'
-import CrossChainTWAPABI from '@/abi/CrossChainTWAP'
-
-const CROSS_CHAIN_TWAP_ADDRESS = '0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F'
 
 // 🔁 Replace with real token addresses
 const USDC_ETHERLINK = '0x...' // Get from Etherlink Explorer
 const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' // Base USDC
 
-export default function SwapPage() {
+const CROSS_CHAIN_TWAP_ADDRESS = '0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F'
+
+const CrossChainTWAPABI = [
+  {
+    name: 'scheduleSwap',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { type: 'address', name: 'fromToken' },
+      { type: 'address', name: 'toToken' },
+      { type: 'uint256', name: 'totalAmount' },
+      { type: 'uint256', name: 'numSlices' },
+      { type: 'uint256', name: 'interval' },
+      { type: 'uint256', name: 'minReturnAmount' },
+      { type: 'bool', name: 'isBaseToEtherlink' },
+    ],
+    outputs: [],
+  },
+] as const
+
+export default function Home() {
   const { address, isConnected } = useAccount()
+  const { connect, connectors } = useConnect()
   const { writeContract, isPending } = useWriteContract()
+
   const [amount, setAmount] = useState('')
   const [numSlices, setNumSlices] = useState('5')
   const [interval, setInterval] = useState('300')
@@ -25,17 +43,6 @@ export default function SwapPage() {
   const fromToken = direction === 'etherlinkToBase' ? USDC_ETHERLINK : USDC_BASE
   const toToken = direction === 'etherlinkToBase' ? USDC_BASE : USDC_ETHERLINK
   const isBaseToEtherlink = direction === 'baseToEtherlink'
-
-  const { data: orderCount } = useReadContract({
-    address: CROSS_CHAIN_TWAP_ADDRESS,
-    abi: CrossChainTWAPABI,
-    functionName: 'getOrderCount',
-    args: [address!],
-    query: {
-      enabled: !!address,
-      refetchInterval: 10000,
-    },
-  })
 
   const scheduleSwap = () => {
     if (!amount || !minReturn) return
@@ -51,15 +58,26 @@ export default function SwapPage() {
         BigInt(numSlices),
         BigInt(interval),
         parseUnits(minReturn, 6),
-        isBaseToEtherlink
+        isBaseToEtherlink,
       ],
     })
   }
 
   if (!isConnected) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <w3m-button size="lg" />
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-lg text-center">
+          <h2 className="text-2xl font-semibold mb-4">Connect Your Wallet</h2>
+          {connectors.map((connector) => (
+            <button
+              key={connector.id}
+              onClick={() => connect({ connector })}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg mt-2"
+            >
+              {connector.name}
+            </button>
+          ))}
+        </div>
       </div>
     )
   }
@@ -68,7 +86,7 @@ export default function SwapPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-center mb-2">Fusion Chrono</h1>
-        <p className="text-center text-gray-600 mb-8">Schedule MEV-resistant TWAP swaps</p>
+        <p className="text-center text-gray-600 mb-8">MEV-resistant time-weighted swaps</p>
 
         <div className="bg-white p-6 rounded-xl shadow-md">
           <h2 className="text-xl font-semibold mb-4">Schedule Swap</h2>
@@ -137,12 +155,6 @@ export default function SwapPage() {
               {isPending ? 'Confirming...' : 'Schedule Swap'}
             </button>
           </div>
-
-          {orderCount !== undefined && (
-            <div className="mt-6 p-4 bg-gray-50 rounded">
-              <p>Your active orders: <strong>{Number(orderCount)}</strong></p>
-            </div>
-          )}
         </div>
       </div>
     </div>
