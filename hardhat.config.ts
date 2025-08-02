@@ -31,14 +31,19 @@ const config: HardhatUserConfig = {
 
     // Etherlink Mainnet
     etherlink: {
-      url: "https://node.mainnet.etherlink.com",
+      url: "https://rpc.ankr.com/etherlink_mainnet",
       accounts: [process.env.PRIVATE_KEY || ""],
       chainId: 42793,
+      timeout: 100000, // 100 seconds
+      httpHeaders: { "User-Agent": "Hardhat/1.0" },
+      // Add retry logic
+      gasPrice: "auto",
+      gasMultiplier: 1.2,
     },
   },
   etherscan: {
     apiKey: {
-      etherlinkMainnet: "abc",
+      etherlink: "abc",
     },
     customChains: [
       {
