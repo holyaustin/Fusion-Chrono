@@ -21,49 +21,28 @@ const config: HardhatUserConfig = {
         interval: 5000
       }
     },
-    sepolia: {
-      url: process.env.SEPOLIA_RPC_URL,
-      accounts: [process.env.PRIVATE_KEY!]
-    },
-        // Optimism Sepolia
-    optimismSepolia: {
-      url: "https://sepolia.optimism.io",
+
+        // Base Mainnet
+    base: {
+      url: "https://base-mainnet.infura.io/v3/" + process.env.INFURA_KEY, //https://mainnet.base.org
       accounts: [process.env.PRIVATE_KEY || ""],
-      chainId: 11155420, // OP Sepolia chain ID (EVM)
+      chainId: 8453,
     },
 
-        // Etherlink Testnet
-    etherlinkTestnet: {
-      url: "https://node.ghostnet.etherlink.com",
-      accounts: [process.env.PRIVATE_KEY || ""],
-      chainId: 128123,
-    },
-  
-   /**
-    etherlinkTestnet: {
-      url: process.env.ETHERLINK_RPC_URL,
-      accounts: [process.env.PRIVATE_KEY!],
-      chainId: 128123,
-      gasPrice: 40000000000, // 40 Gwei (higher than recommended min)
-      gasMultiplier: 1.5, // 50% buffer for estimation errors
-      timeout: 180000 // 3 minutes timeout
-    },
-     */
-    etherlinkMainnet: {
+    // Etherlink Mainnet
+    etherlink: {
       url: "https://node.mainnet.etherlink.com",
-      accounts: [process.env.PRIVATE_KEY!],
-      gasPrice: "auto",
-      gasMultiplier: 1.2
+      accounts: [process.env.PRIVATE_KEY || ""],
+      chainId: 42793,
     },
   },
   etherscan: {
     apiKey: {
       etherlinkMainnet: "abc",
-      etherlinkTestnet: "abc",
     },
     customChains: [
       {
-        network: "etherlinkMainnet",
+        network: "etherlink",
         chainId: 42793,
         urls: {
           apiURL: "https://explorer.etherlink.com/api",
@@ -71,19 +50,11 @@ const config: HardhatUserConfig = {
         },
       },
     {
-      network: "etherlinkTestnet",
-      chainId: 128123,
+      network: "base",
+      chainId: 8453,
       urls: {
-        apiURL: "https://explorer.ghostnet.etherlink.com/api",
-        browserURL: "https://explorer.ghostnet.etherlink.com",
-      },
-    },
-    {
-      network: "optimismSepolia",
-      chainId: 11155420,
-      urls: {
-        apiURL: "https://sepolia-optimism.etherscan.io/api",
-        browserURL: "https://sepolia-optimism.etherscan.io",
+        apiURL: "https://base-mainnet.infura.io/v3/" + process.env.INFURA_KEY, //https://mainnet.base.org
+        browserURL: "https://basescan.org/",
       },
     },
     ],

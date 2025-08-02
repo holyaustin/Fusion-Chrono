@@ -4,6 +4,16 @@
 
 Cross-chain TWAP DEX Aggregator using 1inch Fusion+ on Optimism Sepolia, triggered from Etherlink (or vice versa), with real-time slippage analytics."
 
+Cross-chain TWAP DEX Aggregator using 1inch Fusion+ on Etherlink Mainnet and Base Mainnet
+
+Enable MEV-resistant, time-weighted swaps
+Support bi-directional swaps:
+Etherlink ↔ Base
+Use Etherlink’s bridge (0x1f8E735f424B7A49A885571A2fA104E8C13C26c7)
+Leverage 1inch Fusion+ Cross-Chain SDK for sealed-bid auctions
+Include real-time slippage analytics
+
+
 ### 2. Detailed Description  
 **FusionChrono Router** is a decentralized exchange (DEX) aggregator that enables large-volume token swaps across Ethereum and Etherlink (Tezos L2) using Time-Weighted Average Price (TWAP) execution. It splits orders into smaller chunks executed over time to minimize slippage, while leveraging 1inch Fusion+ for MEV-resistant cross-chain routing. Key features include:  
 - **Cross-Chain TWAP Engine**: Splits orders (e.g., $10k ETH→USDC into 4 chunks over 40 mins).  

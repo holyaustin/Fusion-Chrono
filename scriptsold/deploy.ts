@@ -6,9 +6,7 @@ async function main() {
   await contract.waitForDeployment();
 
   console.log("✅ CrossChainTWAP deployed to:", await contract.getAddress());
+  // ✅ Save this address!
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main().catch(console.error);
