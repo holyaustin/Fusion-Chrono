@@ -11,7 +11,11 @@ REPORT_GAS=true npx hardhat test
 npx hardhat node
 npx hardhat ignition deploy ./ignition/modules/Lock.ts
 ```
-✅ CrossChainTWAP deployed to: 0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F
+Etherlink ✅ CrossChainTWAP deployed to: 0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F
 
 Successfully verified contract CrossChainTWAP on the block explorer.
 https://explorer.etherlink.com/address/0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F#code
+
+
+
+Base Deploy  CrossChainTWAP deployed to: 0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F

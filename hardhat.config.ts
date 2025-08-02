@@ -44,6 +44,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       etherlink: "abc",
+      base: "abc",
     },
     customChains: [
       {

@@ -1,103 +1,150 @@
-import Image from "next/image";
+// app/page.tsx
+'use client'
 
-export default function Home() {
+import { useAccount, useWriteContract, useReadContract } from 'wagmi'
+import { etherlink } from 'wagmi/chains'
+import { parseUnits } from 'viem'
+import { useState } from 'react'
+import CrossChainTWAPABI from '@/abi/CrossChainTWAP'
+
+const CROSS_CHAIN_TWAP_ADDRESS = '0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F'
+
+// 🔁 Replace with real token addresses
+const USDC_ETHERLINK = '0x...' // Get from Etherlink Explorer
+const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' // Base USDC
+
+export default function SwapPage() {
+  const { address, isConnected } = useAccount()
+  const { writeContract, isPending } = useWriteContract()
+  const [amount, setAmount] = useState('')
+  const [numSlices, setNumSlices] = useState('5')
+  const [interval, setInterval] = useState('300')
+  const [minReturn, setMinReturn] = useState('')
+  const [direction, setDirection] = useState<'etherlinkToBase' | 'baseToEtherlink'>('etherlinkToBase')
+
+  const fromToken = direction === 'etherlinkToBase' ? USDC_ETHERLINK : USDC_BASE
+  const toToken = direction === 'etherlinkToBase' ? USDC_BASE : USDC_ETHERLINK
+  const isBaseToEtherlink = direction === 'baseToEtherlink'
+
+  const { data: orderCount } = useReadContract({
+    address: CROSS_CHAIN_TWAP_ADDRESS,
+    abi: CrossChainTWAPABI,
+    functionName: 'getOrderCount',
+    args: [address!],
+    query: {
+      enabled: !!address,
+      refetchInterval: 10000,
+    },
+  })
+
+  const scheduleSwap = () => {
+    if (!amount || !minReturn) return
+
+    writeContract({
+      address: CROSS_CHAIN_TWAP_ADDRESS,
+      abi: CrossChainTWAPABI,
+      functionName: 'scheduleSwap',
+      args: [
+        fromToken,
+        toToken,
+        parseUnits(amount, 6),
+        BigInt(numSlices),
+        BigInt(interval),
+        parseUnits(minReturn, 6),
+        isBaseToEtherlink
+      ],
+    })
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <w3m-button size="lg" />
+      </div>
+    )
+  }
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl font-bold text-center mb-2">Fusion Chrono</h1>
+        <p className="text-center text-gray-600 mb-8">Schedule MEV-resistant TWAP swaps</p>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+        <div className="bg-white p-6 rounded-xl shadow-md">
+          <h2 className="text-xl font-semibold mb-4">Schedule Swap</h2>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium">Amount (USDC)</label>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full p-2 border rounded"
+                placeholder="100"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Direction</label>
+              <select
+                value={direction}
+                onChange={(e) => setDirection(e.target.value as any)}
+                className="w-full p-2 border rounded"
+              >
+                <option value="etherlinkToBase">Etherlink → Base</option>
+                <option value="baseToEtherlink">Base → Etherlink</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Slices</label>
+              <input
+                type="number"
+                value={numSlices}
+                onChange={(e) => setNumSlices(e.target.value)}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Interval (seconds)</label>
+              <input
+                type="number"
+                value={interval}
+                onChange={(e) => setInterval(e.target.value)}
+                className="w-full p-2 border rounded"
+                placeholder="300"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Min Return (USDC)</label>
+              <input
+                type="number"
+                value={minReturn}
+                onChange={(e) => setMinReturn(e.target.value)}
+                className="w-full p-2 border rounded"
+                placeholder="98"
+              />
+            </div>
+
+            <button
+              onClick={scheduleSwap}
+              disabled={isPending}
+              className="w-full bg-blue-600 text-white p-3 rounded font-semibold disabled:opacity-50"
+            >
+              {isPending ? 'Confirming...' : 'Schedule Swap'}
+            </button>
+          </div>
+
+          {orderCount !== undefined && (
+            <div className="mt-6 p-4 bg-gray-50 rounded">
+              <p>Your active orders: <strong>{Number(orderCount)}</strong></p>
+            </div>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
-  );
+  )
 }
