@@ -1,162 +1,70 @@
 // app/page.tsx
-'use client'
-
-import { useAccount, useConnect, useWriteContract } from 'wagmi'
-import { parseUnits } from 'viem'
-import { useState } from 'react'
-
-// 🔁 Replace with real token addresses
-const USDC_ETHERLINK = '0x...' // Get from Etherlink Explorer
-const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' // Base USDC
-
-const CROSS_CHAIN_TWAP_ADDRESS = '0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F'
-
-const CrossChainTWAPABI = [
-  {
-    name: 'scheduleSwap',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { type: 'address', name: 'fromToken' },
-      { type: 'address', name: 'toToken' },
-      { type: 'uint256', name: 'totalAmount' },
-      { type: 'uint256', name: 'numSlices' },
-      { type: 'uint256', name: 'interval' },
-      { type: 'uint256', name: 'minReturnAmount' },
-      { type: 'bool', name: 'isBaseToEtherlink' },
-    ],
-    outputs: [],
-  },
-] as const
+import { Header } from '@/components/Header'
+import { Footer } from '@/components/Footer'
 
 export default function Home() {
-  const { address, isConnected } = useAccount()
-  const { connect, connectors } = useConnect()
-  const { writeContract, isPending } = useWriteContract()
-
-  const [amount, setAmount] = useState('')
-  const [numSlices, setNumSlices] = useState('5')
-  const [interval, setInterval] = useState('300')
-  const [minReturn, setMinReturn] = useState('')
-  const [direction, setDirection] = useState<'etherlinkToBase' | 'baseToEtherlink'>('etherlinkToBase')
-
-  const fromToken = direction === 'etherlinkToBase' ? USDC_ETHERLINK : USDC_BASE
-  const toToken = direction === 'etherlinkToBase' ? USDC_BASE : USDC_ETHERLINK
-  const isBaseToEtherlink = direction === 'baseToEtherlink'
-
-  const scheduleSwap = () => {
-    if (!amount || !minReturn) return
-
-    writeContract({
-      address: CROSS_CHAIN_TWAP_ADDRESS,
-      abi: CrossChainTWAPABI,
-      functionName: 'scheduleSwap',
-      args: [
-        fromToken,
-        toToken,
-        parseUnits(amount, 6),
-        BigInt(numSlices),
-        BigInt(interval),
-        parseUnits(minReturn, 6),
-        isBaseToEtherlink,
-      ],
-    })
-  }
-
-  if (!isConnected) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-lg text-center">
-          <h2 className="text-2xl font-semibold mb-4">Connect Your Wallet</h2>
-          {connectors.map((connector) => (
-            <button
-              key={connector.id}
-              onClick={() => connect({ connector })}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg mt-2"
-            >
-              {connector.name}
-            </button>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-2">Fusion Chrono</h1>
-        <p className="text-center text-gray-600 mb-8">MEV-resistant time-weighted swaps</p>
-
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <h2 className="text-xl font-semibold mb-4">Schedule Swap</h2>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium">Amount (USDC)</label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full p-2 border rounded"
-                placeholder="100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Direction</label>
-              <select
-                value={direction}
-                onChange={(e) => setDirection(e.target.value as any)}
-                className="w-full p-2 border rounded"
-              >
-                <option value="etherlinkToBase">Etherlink → Base</option>
-                <option value="baseToEtherlink">Base → Etherlink</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Slices</label>
-              <input
-                type="number"
-                value={numSlices}
-                onChange={(e) => setNumSlices(e.target.value)}
-                className="w-full p-2 border rounded"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Interval (seconds)</label>
-              <input
-                type="number"
-                value={interval}
-                onChange={(e) => setInterval(e.target.value)}
-                className="w-full p-2 border rounded"
-                placeholder="300"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Min Return (USDC)</label>
-              <input
-                type="number"
-                value={minReturn}
-                onChange={(e) => setMinReturn(e.target.value)}
-                className="w-full p-2 border rounded"
-                placeholder="98"
-              />
-            </div>
-
-            <button
-              onClick={scheduleSwap}
-              disabled={isPending}
-              className="w-full bg-blue-600 text-white p-3 rounded font-semibold disabled:opacity-50"
+    <>
+      <Header />
+      
+      <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+        {/* Hero Section */}
+        <section className="py-20 px-6 text-center">
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-800 leading-tight">
+            MEV-Resistant
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+              Cross-Chain TWAP Swaps
+            </span>
+          </h1>
+          <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
+            Schedule time-weighted, MEV-resistant swaps between Etherlink and Base using 1inch Fusion+.
+            No front-running. No slippage surprises.
+          </p>
+          <div className="mt-10">
+            <a
+              href="/app"
+              className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-4 px-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition"
             >
-              {isPending ? 'Confirming...' : 'Schedule Swap'}
-            </button>
+              Launch App
+            </a>
           </div>
-        </div>
-      </div>
-    </div>
+        </section>
+
+        {/* Features */}
+        <section className="py-16 px-6 bg-white">
+          <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-8 text-center">
+            <div className="p-6">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">MEV-Resistant</h3>
+              <p className="text-gray-600">Powered by 1inch Fusion+ sealed-bid auctions</p>
+            </div>
+            <div className="p-6">
+              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Time-Weighted</h3>
+              <p className="text-gray-600">Reduce slippage with TWAP execution</p>
+            </div>
+            <div className="p-6">
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Cross-Chain</h3>
+              <p className="text-gray-600">Swap seamlessly between Etherlink and Base</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <Footer />
+    </>
   )
 }
