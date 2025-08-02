@@ -80,3 +80,8 @@ I -->|Slippage Report| A
   - Scripted 3-minute demo showing 35% slippage savings on a $5k swap.  
 
 **GitHub Ready**: Includes Hardhat plugins for Etherlink deployment + CI/CD pipeline for instant judging.
+
+✅ CrossChainTWAP deployed to: 0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F
+
+Successfully verified contract CrossChainTWAP on the block explorer.
+https://explorer.etherlink.com/address/0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F#code
