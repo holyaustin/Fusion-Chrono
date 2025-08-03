@@ -127,6 +127,10 @@ export default function TWAPPage() {
           </div>
         </Link>
 
+        <Link href="/slippage" className="full-round text-2xl text-secondary px-8 py-2 bg-red-700 font-bold hover:bg-red-500 ">
+          Slippage Analytics
+      </Link>
+
         <ConnectButton.Custom>
           {({ openConnectModal, openAccountModal }) => {
             return address ? (

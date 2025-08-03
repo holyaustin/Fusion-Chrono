@@ -7,8 +7,6 @@
 import { ethers } from 'ethers'
 import axios from 'axios'
 import dotenv from 'dotenv'
-import fs from 'fs'
-import path from 'path'
 
 // Load environment variables from .env
 dotenv.config()
@@ -67,28 +65,6 @@ const POLLING_INTERVAL = 5000
 
 // 📥 Track the last processed block to avoid reprocessing
 let lastProcessedBlock = 0
-
-// 📊 Analytics File Path
-const ANALYTICS_FILE = path.join(__dirname, 'analytics.json')
-
-// 🧠 Load existing analytics or initialize
-let analytics: any[] = []
-if (fs.existsSync(ANALYTICS_FILE)) {
-  try {
-    analytics = JSON.parse(fs.readFileSync(ANALYTICS_FILE, 'utf-8'))
-  } catch (err) {
-    console.warn('⚠️  Failed to parse analytics.json, starting fresh')
-  }
-}
-
-// ✅ Helper: Save to file
-function saveAnalytics() {
-  try {
-    fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(analytics, null, 2))
-  } catch (err) {
-    console.error('❌ Failed to save analytics:', err)
-  }
-}
 
 // 🚀 Main Function
 // Starts the relayer and begins polling for events
@@ -164,7 +140,7 @@ async function checkForNewEvents() {
           continue
         }
 
-        // ✅ Extract event arguments
+        // Extract event arguments
         const { orderId, owner, fromToken, toToken, totalAmount, isBaseToEtherlink } = decoded.args
 
         console.log(`\n🆕 SwapScheduled Event Detected`)
@@ -182,8 +158,7 @@ async function checkForNewEvents() {
             USDC_BASE,
             USDC_ETHERLINK,
             totalAmount,
-            owner,
-            Number(orderId)
+            owner
           )
         } else {
           console.log('🔁 Creating Fusion+ order: Etherlink → Base')
@@ -193,8 +168,7 @@ async function checkForNewEvents() {
             USDC_ETHERLINK,
             USDC_BASE,
             totalAmount,
-            owner,
-            Number(orderId)
+            owner
           )
         }
       } catch (error) {
@@ -217,8 +191,7 @@ async function createFusionPlusOrder(
   fromToken: string,
   toToken: string,
   amount: bigint,
-  fromAddress: string,
-  orderId: number
+  fromAddress: string
 ) {
   console.log(`🛠️  Creating Fusion+ Order: ${srcChainId} → ${dstChainId}`)
 
@@ -232,7 +205,7 @@ async function createFusionPlusOrder(
     console.log('✅ Fusion+ order created:', order.orderUid)
 
     // Step 3: Send Transaction
-    const txHash = await sendTransaction(order, orderId, amount, fromToken, toToken, srcChainId, dstChainId)
+    const txHash = await sendTransaction(order)
     console.log(`🎉 Fusion+ order submitted! TX: ${txHash}`)
   } catch (error) {
     console.error('❌ Failed to create Fusion+ order:', error)
@@ -314,15 +287,7 @@ async function createOrder(
 }
 
 // 📤 Send the Fusion+ Order Transaction
-async function sendTransaction(
-  order: any,
-  orderId: number,
-  amount: bigint,
-  fromToken: string,
-  toToken: string,
-  srcChainId: number,
-  dstChainId: number
-) {
+async function sendTransaction(order: any) {
   const tx = order.tx
 
   try {
@@ -337,38 +302,7 @@ async function sendTransaction(
     })
 
     const receipt = await txResponse.wait()
-    const txHash = receipt?.hash || txResponse.hash
-
-    // ✅ Calculate slippage
-    const actualAmount = BigInt(order.quote.toTokenAmount)
-    const expectedAmount = amount
-    const slippage = Number(expectedAmount - actualAmount) / Number(expectedAmount)
-    const slippagePct = parseFloat((slippage * 100).toFixed(4))
-
-    // ✅ Create record
-    const record = {
-      orderId,
-      slice: 1,
-      expectedAmount: expectedAmount.toString(),
-      actualAmount: actualAmount.toString(),
-      slippagePct,
-      priceImpactPct: parseFloat((slippagePct * 0.8).toFixed(4)),
-      gasCostXTZ: ((Number(tx.gasPrice) * Number(tx.gas)) / 1e18).toFixed(6),
-      timestamp: new Date().toISOString(),
-      txHash,
-      fromToken,
-      toToken,
-      chainFrom: srcChainId === 42793 ? 'etherlink' : 'base',
-      chainTo: srcChainId === 42793 ? 'base' : 'etherlink',
-    }
-
-    // ✅ Add and save
-    analytics.push(record)
-    saveAnalytics()
-
-    console.log(`✅ Execution logged: Slippage = ${slippagePct}% | TX: ${txHash}`)
-
-    return txHash
+    return receipt?.hash || txResponse.hash
   } catch (error) {
     console.error('❌ Failed to send transaction:', error)
     throw error
