@@ -20,10 +20,13 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "@1inch/byte-utils": "^3.1.0",
     "@1inch/cross-chain-sdk": "^0.1.15",
     "@1inch/fusion-sdk": "^2.3.5",
+    "@ethersproject/providers": "^5.8.0",
     "@layerzerolabs/lz-evm-oapp-v2": "^3.0.119",
     "@openzeppelin/contracts": "^5.4.0",
-    "ethers": "^6.15.0"
+    "ethers": "^6.15.0",
+    "viem": "^2.33.2"
   }
 }
