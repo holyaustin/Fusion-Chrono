@@ -3,17 +3,29 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-black via-red-950 to-black">
       <header className="py-6 px-8 flex justify-between items-center border-b border-primary/30 backdrop-blur-sm bg-black/20">
+          <div className="flex items-center gap-4">
+            {/* Logo using next/image */}
+            <Image
+              src="/logo.png"
+              alt="Fusion Chrono Logo"
+              width={80}
+              height={80}
+              priority
+              className=" border-2 border-secondary shadow-lg"
+            />      
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             Fusion Chrono
           </h1>
           <p className="text-sm text-gray-400 ml-1">TWAP Aggregator</p>
         </div>
+      </div>
         <ConnectButton.Custom>
           {({ account, openConnectModal }) => (
             <button

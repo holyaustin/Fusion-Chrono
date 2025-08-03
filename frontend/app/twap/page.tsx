@@ -6,6 +6,7 @@ import { useAccount, useWriteContract, useReadContract, useSwitchChain } from 'w
 import { etherlink } from '@/lib/chains'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { CrossChainTWAPABI } from '@/lib/abi/CrossChainTWAPABI'
+import Image from 'next/image'
 
 const CONTRACT_ADDRESS = '0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F' as const
 
@@ -78,12 +79,23 @@ export default function TWAPPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-red-950 to-black">
       <header className="py-6 px-8 flex justify-between items-center border-b border-primary/30 backdrop-blur-sm bg-black/20">
+               <div className="flex items-center gap-4">
+          {/* Logo using next/image */}
+          <Image
+            src="/logo.png"
+            alt="Fusion Chrono Logo"
+            width={80}
+            height={80}
+            priority
+            className="border-2 border-secondary shadow-lg"
+          />
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             Fusion Chrono
           </h1>
           <p className="text-sm text-gray-400 ml-1">TWAP Aggregator</p>
         </div>
+      </div>
         <ConnectButton.Custom>
           {({ account, openConnectModal }) => (
             <button
