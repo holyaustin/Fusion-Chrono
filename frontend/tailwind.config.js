@@ -1,10 +1,9 @@
-// tailwind.config.ts
-import type { Config } from 'tailwindcss'
-
-const config: Config = {
+// tailwind.config.js
+/** @type {import('tailwindcss').Config} */
+module.exports = {
   content: [
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx}',
+    './components/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {
@@ -20,8 +19,14 @@ const config: Config = {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
       },
+      screens: {
+        sm: '640px',
+        md: '768px',
+        lg: '1024px',
+        xl: '1280px',
+      },
     },
   },
+  darkMode: 'class',
   plugins: [],
 }
-export default config

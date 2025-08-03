@@ -1,6 +1,4 @@
 // lib/chains.ts
-import { Chain } from 'wagmi'
-
 export const etherlink = {
   id: 10208,
   name: 'Etherlink',

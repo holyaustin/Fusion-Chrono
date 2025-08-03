@@ -1,11 +1,9 @@
 // app/layout.tsx
 import { Providers } from './providers'
-import type { Metadata } from "next"
+import './globals.css'
 
-export const metadata: Metadata = {
-  title: "Fusion Chrono",
-  description: "Cross-chain TWAP DEX Aggregator using 1inch Fusion+",
-}
+export const dynamic = 'force-static'
+export const revalidate = 3600
 
 export default function RootLayout({
   children,
@@ -13,9 +11,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body>
-        <Providers>{children}</Providers>
+    <html lang="en" suppressHydrationWarning>
+      <body className="bg-black text-white min-h-screen font-sans antialiased">
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )
