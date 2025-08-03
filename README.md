@@ -1,14 +1,25 @@
+# ✅ Final: `README.md` for **Fusion Chrono**  
+With **Workflow Diagram**, **Slippage Page**, and Full Project Vision
 
-### 1. Short Description
-"Cross-chain TWAP DEX aggregator using 1inch Fusion+ on Etherlink for MEV-resistant, time-weighted swaps with real-time slippage analytics."
+---
 
-Enable MEV-resistant, time-weighted swaps
-Support bi-directional swaps:
-Etherlink ↔ Base
-Use Etherlink’s bridge (0x1f8E735f424B7A49A885571A2fA104E8C13C26c7)
-Leverage 1inch Fusion+ Cross-Chain SDK for sealed-bid auctions
-Include real-time slippage analytics
+# 🚀 Fusion Chrono  
+### Cross-chain TWAP DEX Aggregator using 1inch Fusion+ on Etherlink
 
+> **MEV-resistant, time-weighted swaps with real-time slippage analytics**  
+> Bidirectional: **Etherlink ↔ Base**  
+> Powered by **1inch Fusion+ Cross-Chain API**  
+> Built for **low slippage, high security, and MEV protection**
+
+---
+
+## 🔍 Overview
+
+**Fusion Chrono** enables users to execute **Time-Weighted Average Price (TWAP)** swaps across **Etherlink** and **Base**, leveraging **1inch Fusion+** sealed-bid auctions to **eliminate MEV** and **minimize slippage**.
+
+Users schedule large swaps that are split into time-sliced executions, ensuring optimal price discovery without front-running.
+
+---
 
 ### 2. Detailed Description  
 **FusionChrono Router** is a decentralized exchange (DEX) aggregator that enables large-volume token swaps across Ethereum and Etherlink (Tezos L2) using Time-Weighted Average Price (TWAP) execution. It splits orders into smaller chunks executed over time to minimize slippage, while leveraging 1inch Fusion+ for MEV-resistant cross-chain routing. Key features include:  
@@ -18,81 +29,236 @@ Include real-time slippage analytics
 - **Decentralized Relayer Network**: Ensures secure Ethereum↔Etherlink message passing.  
 Built for traders and institutions, FusionChrono eliminates front-running risks, reduces price impact, and provides institutional-grade execution on EVM-compatible chains.  
 
-### 3. How It’s Built  
-#### Core Technologies  
-- **Smart Contracts** (Solidity):  
-  - `TWAPHook.sol`: Custom limit order hook splitting orders into timed batches (e.g., 10-min intervals).  
-  - `FusionResolver.sol`: Handles 1inch Fusion+ intent matching and fallback settlements.  
-  - `CrossChainOracle.sol`: Adapts 1inch Price Feeds API for Etherlink.  
-- **Backend** (Node.js + Ethers.js):  
-  - Relayer service using Schnorr signatures for batched transaction forwarding.  
-  - Scheduler integrating **Chainlink Automation** for decentralized TWAP chunk execution.  
-- **Frontend** (React + 1inch SDK):  
-  - Swap dashboard with slippage heatmaps (Chart.js) and wallet connectivity (MetaMask/Wagmi).  
-  - Real-time savings calculator using 1inch Data API.  
-- **Infrastructure**:  
-  - **Etherlink L2**: For 10-sec finality and $0.001 avg gas fees.  
-  - **Tezos DAL**: Decentralized data attestation layer for cross-chain message proofs.  
+## 🌐 Key Features
 
-#### Key Integrations  
-| **Tech**               | **Purpose**                                  | **Hackathon Benefit**                          |  
-|-------------------------|----------------------------------------------|------------------------------------------------|  
-| **1inch Fusion+ API**   | MEV-resistant routing for TWAP chunks        | Directly addresses "Hack the Stack" prize      |  
-| **Chainlink Automation**| Trustless triggering of timed orders         | Avoids centralized cron jobs                   |  
-| **Etherlink EVM**       | Low-cost TWAP execution environment          | Uses 10-sec finality for rapid partial fills   |  
-| **Tezos DAL**           | Cheap cross-chain data attestation           | $0.0001 per message vs. Ethereum’s $0.50       |  
+| Feature | Description |
+|--------|-------------|
+| ✅ **MEV-Resistant Swaps** | Uses 1inch Fusion+ sealed-bid auctions |
+| ✅ **Cross-Chain TWAP** | Splits large trades over time (e.g., 10 slices over 50 mins) |
+| ✅ **Bi-Directional** | Etherlink ↔ Base (via Etherlink Bridge) |
+| ✅ **Real-Time Slippage Analytics** | Live price impact & slippage tracking |
+| ✅ **1inch Fusion+ API** | Cross-chain sealed-bid auction execution |
+| ✅ **Smart Routing** | Best DEX path per slice via 1inch aggregation |
+| ✅ **Gas-Optimized** | Low fees via Etherlink’s EVM + Tezos L1 security |
 
-#### Novel Technical Solutions  
-1. **Hybrid Settlement Layer**:  
-   - TWAP chunks routed via 1inch Fusion+ on Etherlink → Ethereum.  
-   - Uses **hashlock proofs** stored on Tezos DAL to validate cross-chain swaps.  
-2. **Gas-Optimized TWAP Engine**:  
-   - Implements **Diamond Proxy Pattern** to reduce contract size by 40%.  
-   - Batch processes partial fills using Schnorr multisigs.  
-3. **Slippage Shield Algorithm**:  
-   - Dynamically adjusts chunk sizes based on 1inch Price Feed volatility data.  
-   - Example: During high volatility, splits $10k order into 8 chunks instead of 4.  
+---
 
-#### Deployment Workflow  
-```mermaid  
-graph TB  
-A[Frontend] -->|User Order| B(TWAPHook.sol)  
-B -->|Splits Order| C[Chainlink Automation]  
-C -->|Triggers Chunk| D{1inch Fusion+}  
-D -->|Etherlink L2| E[Fast Swap]  
-D -->|Ethereum| F[MEV-Proof Swap]  
-E & F --> G[Relayer]  
-G -->|Saves Data| H[Tezos DAL]  
-H -->|Analytics| I[1inch Data API]  
-I -->|Slippage Report| A  
-```  
-
-#### Hackathon-Specific Innovations  
-- **Etherlink↔1inch Fusion+ Adapter**:  
-  - Modified 1inch AggregationRouterV5 to support Etherlink’s 10-sec finality.  
-  - Uses **signature stitching** to bundle TWAP orders into single Fusion+ intents.  
-
-**GitHub Ready**: Includes Hardhat plugins for Etherlink deployment + CI/CD pipeline for instant judging.
+## 📦 Architecture Overview
 
 ```
++------------------+       +---------------------+
+|                  |       |                     |
+|   User Frontend  |<----->|  CrossChainTWAP.sol |
+| (Next.js + Wagmi)|       | (Etherlink Mainnet) |
+|                  |       |                     |
++--------+---------+       +----------+----------+
+         |                            |
+         | SwapScheduled Event        | Token Lock
+         v                            v
++--------+---------+       +----------+----------+
+|                  |       |                     |
+|   Relayer        |<----->|  1inch Fusion+ API  |
+| (Node.js + viem) |       | (Sealed-Bid Auctions)|
+|                  |       |                     |
++--------+---------+       +----------+----------+
+         |                            |
+         | SliceExecuted (off-chain)  | Cross-Chain Swap
+         v                            v
++--------+---------+       +----------+----------+
+|                  |       |                     |
+|   Analytics UI   |<------|  Slippage Dashboard  |
+| (Real-Time Chart)|       | (Live Impact Data)  |
++------------------+       +---------------------+
+```
+
+---
+
+## 🔗 Contracts & Addresses
+
+| Contract | Chain | Address |
+|--------|-------|---------|
+| `CrossChainTWAP` | Etherlink Mainnet | [`0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F`](https://explorer.etherlink.com/address/0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F) |
+| Etherlink Bridge | Etherlink Mainnet | `0x1f8E735f424B7A49A885571A2fA104E8C13C26c7` |
+| 1inch Fusion+ API | Cross-Chain | [fusion.1inch.io](https://fusion.1inch.io) |
+
+
 Etherlink ✅ CrossChainTWAP deployed to: 0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F
 
 Successfully verified contract CrossChainTWAP on the block explorer.
 https://explorer.etherlink.com/address/0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F#code
+---
 
+## 🧪 Workflow: How It Works
+
+1. **User Schedules Swap**
+   - Chooses: `fromToken`, `toToken`, `totalAmount`, `numSlices`, `interval`
+   - Direction: `Etherlink → Base` or `Base → Etherlink`
+   - Sets `minReturnAmount` (slippage tolerance)
+
+2. **Frontend Locks Tokens**
+   - `IERC20.transferFrom()` to `CrossChainTWAP` contract
+   - Emits `SwapScheduled(orderId, owner, fromToken, toToken, totalAmount, isBaseToEtherlink)`
+
+3. **Relayer Detects Event**
+   - Listens via `viem.watchEvent()` on Etherlink
+   - Fetches order details
+
+4. **Relayer Triggers 1inch Fusion+ Auction**
+   - Calls `POST /auction` with:
+     - `fromChainId`, `toChainId`
+     - `fromToken`, `toToken`, `amount`
+     - `exclusiveRelayer`, `fusionMode: 'fusion'`
+   - Sealed-bid auction prevents MEV
+
+5. **Auction Settles**
+   - 1inch executes swap via best DEX route
+   - Funds bridged via Etherlink Bridge
+   - Relayer logs `SliceExecuted` (off-chain)
+
+6. **Slippage Analytics Updated**
+   - Real-time comparison: `expected vs actual`
+   - Price impact, volatility, gas cost per slice
+
+---
+
+## 📊 Slippage Analytics Dashboard
+
+### Page: `/slippage`
+
+> Real-time chart showing:
+- ✅ **Slippage per slice**
+- ✅ **Price impact**
+- ✅ **Volatility index**
+- ✅ **Gas cost trend**
+- ✅ **Cumulative deviation**
+
+### Features:
+- 📈 Chart.js or Recharts visualization
+- 🔁 Auto-refresh every 30s
+- 📊 Export to CSV
+- 🎯 Slippage tolerance alerts (toast/email)
+
+### Sample Data:
+| Slice | Expected (USDC) | Actual (USDC) | Slippage | Price Impact |
+|------|------------------|---------------|--------|--------------|
+| 1    | 100,000          | 99,850        | 0.15%  | 0.12%        |
+| 2    | 100,000          | 99,900        | 0.10%  | 0.08%        |
+| 3    | 100,000          | 99,700        | 0.30%  | 0.25%        |
+
+> 🔍 Goal: Keep average slippage < 0.5%
+
+---
+
+## 🧩 Frontend Pages
+
+| Page | Description |
+|------|-------------|
+| `/` | Landing: "Start App" + Connect Wallet |
+| `/twap` | Schedule TWAP swap with token selector |
+| `/orders` | View active/scheduled orders |
+| `/slippage` | Real-time slippage analytics dashboard |
+| `/relayer` | Relayer status & health (admin-only) |
+
+---
+
+## ⚙️ Relayer Service
+
+### `listen-swap-events.ts`
+
+- Listens to `SwapScheduled` on Etherlink
+- Triggers 1inch Fusion+ cross-chain auction
+- Tracks slice execution
+- Updates off-chain analytics DB
 
 ## Relayer Service (Node.js / TypeScript)
 This relayer listens to SwapScheduled events from your CrossChainTWAP contract on Etherlink and Base, then uses 1inch Fusion+ API to execute cross-chain TWAP orders via Fusion auctions.
 
-🧩 Relayer Responsibilities
-Monitor both chains (Etherlink & Base) for SwapScheduled events.
-Track order state (executed slices, timing).
-Trigger 1inch Fusion+ auctions at each TWAP interval.
-Submit winning quotes as transactions.
-Update on-chain state via emitted SliceExecuted (off-chain only).
-Handle cancellations and slippage checks.
-Log, alert, retry on failure.
 
 ### Run relayer 
 npx ts-node listen-swap-events.ts
+
+### Tech Stack:
+- Node.js + `viem` + `axios`
+- PostgreSQL (order tracking)
+- Redis (caching)
+- Cron (retry failed slices)
+
+---
+
+## 📦 Tech Stack
+
+| Layer | Technology |
+|------|------------|
+| Frontend | Next.js 15, React, Tailwind CSS, Wagmi, RainbowKit |
+| Smart Contract | Solidity, Hardhat, OpenZeppelin |
+| Relayer | Node.js, viem, 1inch Fusion+ API |
+| Analytics | Chart.js, Recharts, Socket.IO (real-time) |
+| Hosting | Vercel (frontend), AWS EC2 (relayer) |
+| Wallets | MetaMask (EVM), WalletConnect |
+
+---
+
+---
+
+## 🚀 Run Locally
+
+### 1. Clone Repo
+```bash
+git clone https://github.com/you/fusion-chrono.git
+cd fusion-chrono
+```
+
+### 2. Install Dependencies
+```bash
+npm install
+```
+
+### 3. Set Environment Variables
+```env
+# .env.local
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_w3id
+ETHERLINK_RPC=https://node.mainnet.etherlink.com
+BASE_RPC=https://mainnet.base.org
+ONE_INCH_API_KEY=your_1inch_key
+RELAYER_PRIVATE_KEY=0x...
+```
+
+### 4. Start Dev Server
+```bash
+npm run dev
+```
+
+Visit: `http://localhost:3000`
+
+---
+
+## 🌐 Deploy to Vercel
+
+```bash
+vercel
+```
+
+✅ Auto-deploys on push  
+✅ Environment variables in dashboard  
+✅ Custom domain support
+
+---
+
+## 📄 License
+
+MIT
+
+---
+
+## 🙌 Acknowledgments
+
+- [1inch Fusion+](https://fusion.1inch.io)
+- [Etherlink](https://etherlink.com)
+- [Base](https://base.org)
+- [Wagmi](https://wagmi.sh)
+- [RainbowKit](https://rainbowkit.com)
+
+---
+
+
 

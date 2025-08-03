@@ -9,11 +9,17 @@ export const etherlink = {
     symbol: 'XTZ',
   },
   rpcUrls: {
-    default: { http: ['https://rpc.ankr.com/etherlink_mainnet'] },
+    default: { http: ['https://node.mainnet.etherlink.com'] },
     public: { http: ['https://node.mainnet.etherlink.com'] },
   },
   blockExplorers: {
     default: { name: 'Explorer', url: 'https://explorer.etherlink.com' },
+  },
+  contracts: {
+    multicall3: {
+      address: '0xca11bde05977b3631167028862be2a173976ca11',
+      blockCreated: 1,
+    },
   },
 } as const
 
@@ -32,5 +38,11 @@ export const base = {
   },
   blockExplorers: {
     default: { name: 'Basescan', url: 'https://basescan.org' },
+  },
+  contracts: {
+    multicall3: {
+      address: '0xca11bde05977b3631167028862be2a173976ca11',
+      blockCreated: 5022,
+    },
   },
 } as const

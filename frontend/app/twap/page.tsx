@@ -114,10 +114,10 @@ export default function TWAPPage() {
           <Image
             src="/logo.png"
             alt="Fusion Chrono"
-            width={40}
-            height={40}
+            width={80}
+            height={80}
             priority
-            className="rounded-full border-2 border-secondary shadow-lg group-hover:shadow-xl transition"
+            className=" border-2 border-secondary shadow-lg group-hover:shadow-xl transition"
           />
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent group-hover:opacity-80 transition">
