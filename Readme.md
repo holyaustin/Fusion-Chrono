@@ -1,10 +1,6 @@
 
-### 1. Short Description (Tweet-Length)  
+### 1. Short Description
 "Cross-chain TWAP DEX aggregator using 1inch Fusion+ on Etherlink for MEV-resistant, time-weighted swaps with real-time slippage analytics."
-
-Cross-chain TWAP DEX Aggregator using 1inch Fusion+ on Optimism Sepolia, triggered from Etherlink (or vice versa), with real-time slippage analytics."
-
-Cross-chain TWAP DEX Aggregator using 1inch Fusion+ on Etherlink Mainnet and Base Mainnet
 
 Enable MEV-resistant, time-weighted swaps
 Support bi-directional swaps:
@@ -75,9 +71,6 @@ I -->|Slippage Report| A
 - **Etherlink↔1inch Fusion+ Adapter**:  
   - Modified 1inch AggregationRouterV5 to support Etherlink’s 10-sec finality.  
   - Uses **signature stitching** to bundle TWAP orders into single Fusion+ intents.  
-- **Demo Optimization**:  
-  - Pre-funded testnet wallets with mock USDC/ETH via Etherlink faucet.  
-  - Scripted 3-minute demo showing 35% slippage savings on a $5k swap.  
 
 **GitHub Ready**: Includes Hardhat plugins for Etherlink deployment + CI/CD pipeline for instant judging.
 
@@ -85,3 +78,16 @@ I -->|Slippage Report| A
 
 Successfully verified contract CrossChainTWAP on the block explorer.
 https://explorer.etherlink.com/address/0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F#code
+
+
+
+Base Deploy  CrossChainTWAP deployed to: 0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F
+
+{
+  "fromToken": "0x8f18CE727E57548007c47Ac5C329A9885d6f9b4E",
+  "toToken": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  "totalAmount": "100000000",      // 1,000 USDC (6 decimals)
+  "numSlices": "10",                // 10 slices
+  "interval": "300",                // Every 5 minutes (300 sec)
+  "minReturnAmount": "995000000",   // Min receive: 995 USDC (0.5% slippage)
+  "isBaseToEtherlink": false        // Etherlink → Base

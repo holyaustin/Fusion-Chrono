@@ -3,6 +3,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ✅ Required: RainbowKit + Wagmi styles */
+@import '@rainbow-me/rainbowkit/styles.css';
+
 @layer base {
   body {
     @apply font-sans;

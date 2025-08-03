@@ -1,47 +1,37 @@
 // app/page.tsx
 'use client'
 
-import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Link from 'next/link'
 import Image from 'next/image'
+import { ClientOnlyConnectButton } from '@/components/ClientOnlyConnectButton'
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-black via-red-950 to-black">
+      {/* Header */}
       <header className="py-6 px-8 flex justify-between items-center border-b border-primary/30 backdrop-blur-sm bg-black/20">
-          <div className="flex items-center gap-4">
-            {/* Logo using next/image */}
-            <Image
-              src="/logo.png"
-              alt="Fusion Chrono Logo"
-              width={80}
-              height={80}
-              priority
-              className=" border-2 border-secondary shadow-lg"
-            />      
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            Fusion Chrono
-          </h1>
-          <p className="text-sm text-gray-400 ml-1">TWAP Aggregator</p>
-        </div>
-      </div>
-        <ConnectButton.Custom>
-          {({ account, openConnectModal }) => (
-            <button
-              onClick={openConnectModal}
-              className="btn-gold text-sm px-4 py-2 rounded-full"
-            >
-              {account ? (
-                <span>{account.address.slice(0, 6)}...{account.address.slice(-4)}</span>
-              ) : (
-                <span>Connect Wallet</span>
-              )}
-            </button>
-          )}
-        </ConnectButton.Custom>
+        <Link href="/" className="flex items-center gap-4 group">
+          <Image
+            src="/logo.png"
+            alt="Fusion Chrono"
+            width={80}
+            height={80}
+            priority
+            className=" border-2 border-secondary shadow-lg group-hover:shadow-xl transition"
+          />
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent group-hover:opacity-80 transition">
+              Fusion Chrono
+            </h1>
+            <p className="text-sm text-gray-400 ml-1">TWAP Aggregator</p>
+          </div>
+        </Link>
+
+        {/* ✅ Client-only wallet button */}
+        <ClientOnlyConnectButton />
       </header>
 
+      {/* Main */}
       <main className="flex-1 flex flex-col items-center justify-center text-center px-6 relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center opacity-10"
@@ -70,8 +60,19 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="py-6 px-8 text-center text-gray-500 border-t border-primary/20 backdrop-blur-sm bg-black/20">
-        © 2025 Fusion Chrono. All rights reserved.
+      {/* Footer */}
+      <footer className="py-6 px-8 text-center text-gray-500 border-t border-primary/20 backdrop-blur-sm bg-black/20 flex items-center justify-center gap-3">
+        <Image
+            src="/logo.png"
+          alt="Fusion Chrono"
+          width={60}
+          height={60}
+          className="rborder-2 border-secondary"
+        />
+        <div>
+          <p className="text-secondary font-bold">Fusion Chrono</p>
+          <p className="text-xs text-gray-500">© 2025 All rights reserved</p>
+        </div>
       </footer>
     </div>
   )

@@ -1,6 +1,6 @@
 // lib/chains.ts
 export const etherlink = {
-  id: 10208,
+  id: 42793,
   name: 'Etherlink',
   network: 'etherlink',
   nativeCurrency: {
@@ -9,7 +9,7 @@ export const etherlink = {
     symbol: 'XTZ',
   },
   rpcUrls: {
-    default: { http: ['https://node.mainnet.etherlink.com'] },
+    default: { http: ['https://rpc.ankr.com/etherlink_mainnet'] },
     public: { http: ['https://node.mainnet.etherlink.com'] },
   },
   blockExplorers: {
