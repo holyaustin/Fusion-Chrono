@@ -52,9 +52,9 @@ const provider = new ethers.JsonRpcProvider(ETHERLINK_RPC)
 // 🚨 Use a burner wallet — never expose your main wallet
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider)
 
-// 🌍 1inch Fusion+ API Base URL
-// Documentation: https://portal.1inch.dev/documentation/fusion-plus/orders/introduction
-const FUSION_PLUS_API = 'https://api.1inch.dev/fusion-plus/orders/v1.0'
+// ✅ FIX: Correct 1inch Fusion+ Base URLs
+const FUSION_PLUS_QUOTER_API = 'https://api.1inch.dev/fusion-plus/quoter/v1.0'
+const FUSION_PLUS_ORDERS_API = 'https://api.1inch.dev/fusion-plus/orders/v1.0'
 
 // 📜 Event Signature
 // SwapScheduled(uint256 indexed orderId, address indexed owner, address fromToken, address toToken, uint256 totalAmount, bool isBaseToEtherlink)
@@ -182,7 +182,7 @@ async function checkForNewEvents() {
             USDC_BASE,
             USDC_ETHERLINK,
             totalAmount,
-            owner,
+            owner, // ✅ Pass real user wallet address
             Number(orderId)
           )
         } else {
@@ -193,7 +193,7 @@ async function checkForNewEvents() {
             USDC_ETHERLINK,
             USDC_BASE,
             totalAmount,
-            owner,
+            owner, // ✅ Pass real user wallet address
             Number(orderId)
           )
         }
@@ -217,21 +217,19 @@ async function createFusionPlusOrder(
   fromToken: string,
   toToken: string,
   amount: bigint,
-  fromAddress: string,
+  fromAddress: string, // ✅ User's wallet (owner)
   orderId: number
 ) {
   console.log(`🛠️  Creating Fusion+ Order: ${srcChainId} → ${dstChainId}`)
 
   try {
-    // Step 1: Get Quote
-    const quote = await getQuote(fromToken, toToken, amount, srcChainId)
+    // ✅ Pass fromAddress to getQuote
+    const quote = await getQuote(fromToken, toToken, amount, srcChainId, fromAddress)
     console.log('✅ Quote received from 1inch Fusion+ Quoter')
 
-    // Step 2: Create Order
     const order = await createOrder(fromToken, toToken, amount, fromAddress, quote, srcChainId, dstChainId)
     console.log('✅ Fusion+ order created:', order.orderUid)
 
-    // Step 3: Send Transaction
     const txHash = await sendTransaction(order, orderId, amount, fromToken, toToken, srcChainId, dstChainId)
     console.log(`🎉 Fusion+ order submitted! TX: ${txHash}`)
   } catch (error) {
@@ -240,14 +238,21 @@ async function createFusionPlusOrder(
 }
 
 // 📊 Get Quote from 1inch Fusion+ Quoter API
-async function getQuote(fromToken: string, toToken: string, amount: bigint, chainId: number) {
+// ✅ Now includes fromAddress (user wallet)
+async function getQuote(
+  fromToken: string,
+  toToken: string,
+  amount: bigint,
+  chainId: number,
+  fromAddress: string
+) {
   try {
-    const response = await axios.get(`${FUSION_PLUS_API}/quoter/v1.0/quote/receive`, {
+    const response = await axios.get(`${FUSION_PLUS_QUOTER_API}/quote/receive`, {
       params: {
         fromTokenAddress: fromToken,
         toTokenAddress: toToken,
         fromTokenAmount: amount.toString(),
-        fromAddress: '0x0000000000000000000000000000000000000000', // Placeholder
+        fromAddress, // ✅ Real user wallet — fixes "walletAddress has not provided"
         chainId,
         auctionPeriod: 30, // 30-second auction
         fusionForceGasPrice: '1000000000', // 1 gwei
@@ -279,7 +284,7 @@ async function createOrder(
 ) {
   try {
     const response = await axios.post(
-      `${FUSION_PLUS_API}/order`,
+      `${FUSION_PLUS_ORDERS_API}/order`,
       {
         fromTokenAddress: fromToken,
         toTokenAddress: toToken,
