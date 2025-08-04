@@ -82,10 +82,10 @@ Built for traders and institutions, FusionChrono eliminates front-running risks,
 | 1inch Fusion+ API | Cross-Chain | [fusion.1inch.io](https://fusion.1inch.io) |
 
 
-Etherlink ✅ CrossChainTWAP deployed to: 0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F
+✅ CrossChainTWAP deployed to: 0x7b954082151F7a44B2E42Ef9225393ea4f16c482
 
 Successfully verified contract CrossChainTWAP on the block explorer.
-https://explorer.etherlink.com/address/0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F#code
+https://explorer.etherlink.com/address/0x7b954082151F7a44B2E42Ef9225393ea4f16c482#code
 ---
 
 ## 🧪 Workflow: How It Works
