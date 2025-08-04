@@ -6,36 +6,29 @@ import { useAccount, useWriteContract, useReadContract, useSwitchChain } from 'w
 import { etherlink } from '@/lib/chains'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { CrossChainTWAPABI } from '@/lib/abi/CrossChainTWAPABI'
-import { ERC20_ABI } from '@/lib/abi/ERC20_ABI'
 import Image from 'next/image'
 import Link from 'next/link'
-import toast, { Toaster } from 'react-hot-toast'
 
-const CONTRACT_ADDRESS = '0x7b954082151F7a44B2E42Ef9225393ea4f16c482' as const
+const CONTRACT_ADDRESS = '0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F' as const
 
-// ✅ Token List (Chain-aware) - WETH & USDC preserved
+// ✅ NEW: Token List (Chain-aware)
 const TOKENS = {
   etherlink: {
-    WETH: '0xfc24f770F94edBca6D6f885E12d4317320BcB401', // WETH on Etherlink
-    USDC: '0x796Ea11Fa2dD751eD01b53C372fFDB4AAa8f00F9', // USDC on Etherlink
+    WETH: '0xfc24f770F94edBca6D6f885E12d4317320BcB401', // Replace with real WETH on Etherlink
+    USDC: '0x796Ea11Fa2dD751eD01b53C372fFDB4AAa8f00F9', // Real USDC Etherlink
   },
   base: {
-    WETH: '0x4200000000000000000000000000000000000006', // WETH on Base
-    USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base
+    WETH: '0x4200000000000000000000000000000000000006', // Base WETH
+    USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base USDC
   },
 } as const
 
-// ✅ Format token balance (6 or 18 decimals)
-function formatTokenBalance(balance: bigint, decimals: number): string {
-  return (Number(balance) / 10 ** decimals).toFixed(6)
-}
-
 export default function TWAPPage() {
-  const { address, chain, isConnected } = useAccount()
+  const { address, chain } = useAccount()
   const { switchChain } = useSwitchChain()
   const { writeContract, isPending } = useWriteContract()
 
-  // ✅ Form state - WETH & USDC preserved
+  // ✅ UPDATED: Form now uses token keys instead of raw addresses
   const [form, setForm] = useState({
     fromChain: 'etherlink' as 'etherlink' | 'base',
     toChain: 'base' as 'etherlink' | 'base',
@@ -56,32 +49,11 @@ export default function TWAPPage() {
     query: { enabled: !!address },
   })
 
-  // ✅ Derived addresses from token selection
+  // ✅ NEW: Derived addresses from token selection
   const fromTokenAddress = TOKENS[form.fromChain][form.fromToken]
   const toTokenAddress = TOKENS[form.toChain][form.toToken]
 
-  // ✅ Read balance of fromToken
-  const { data: balance } = useReadContract({
-    address: fromTokenAddress,
-    abi: ERC20_ABI,
-    functionName: 'balanceOf',
-    args: [address!],
-    query: { enabled: !!address && !!fromTokenAddress },
-  })
-
-  // ✅ Read allowance for fromToken
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    address: fromTokenAddress,
-    abi: ERC20_ABI,
-    functionName: 'allowance',
-    args: [address!, CONTRACT_ADDRESS],
-    query: { enabled: !!address && !!fromTokenAddress },
-  })
-
-  // ✅ Check if approval is needed
-  const needsApproval = BigInt(form.totalAmount || '0') > (allowance ? BigInt(allowance.toString()) : 0n)
-
-  // ✅ Update direction based on chains
+  // ✅ NEW: Update direction based on chains
   const updateDirection = (from: string, to: string) => {
     setForm((prev) => ({
       ...prev,
@@ -91,46 +63,7 @@ export default function TWAPPage() {
     }))
   }
 
-  // ✅ Handle approval with wallet connect fallback
-  const handleApprove = () => {
-    if (!isConnected) {
-      const connectBtn = document.querySelector('[data-test-id="wagmi-connect-button"]') as HTMLElement
-      if (connectBtn) connectBtn.click()
-      return
-    }
-
-    if (!address) return
-
-    if (chain?.id !== etherlink.id) {
-      switchChain({ chainId: etherlink.id })
-      return
-    }
-
-    writeContract({
-      address: fromTokenAddress,
-      abi: ERC20_ABI,
-      functionName: 'approve',
-      args: [CONTRACT_ADDRESS, BigInt(form.totalAmount || '0')],
-      chainId: etherlink.id,
-    }, {
-      onSuccess: () => {
-        toast.success(`✅ Approved ${form.totalAmount} ${form.fromToken}!`)
-        refetchAllowance()
-      },
-      onError: (err) => {
-        toast.error(`❌ Approval failed: ${err.message}`)
-      }
-    })
-  }
-
-  // ✅ Handle schedule swap
   const handleSchedule = () => {
-    if (!isConnected) {
-      const connectBtn = document.querySelector('[data-test-id="wagmi-connect-button"]') as HTMLElement
-      if (connectBtn) connectBtn.click()
-      return
-    }
-
     if (!address) return
 
     if (chain?.id !== etherlink.id) {
@@ -184,7 +117,7 @@ export default function TWAPPage() {
             width={80}
             height={80}
             priority
-            className="border-2 border-secondary shadow-lg group-hover:shadow-xl transition"
+            className=" border-2 border-secondary shadow-lg group-hover:shadow-xl transition"
           />
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent group-hover:opacity-80 transition">
@@ -194,9 +127,9 @@ export default function TWAPPage() {
           </div>
         </Link>
 
-        <Link href="/slippage" className="full-round text-2xl text-secondary px-8 py-2 bg-red-700 font-bold hover:bg-red-500">
+        <Link href="/slippage" className="full-round text-2xl text-secondary px-8 py-2 bg-red-700 font-bold hover:bg-red-500 ">
           Slippage Analytics
-        </Link>
+      </Link>
 
         <ConnectButton.Custom>
           {({ openConnectModal, openAccountModal }) => {
@@ -224,7 +157,7 @@ export default function TWAPPage() {
 
       {/* Main */}
       <main className="flex-1 p-6 grid md:grid-cols-2 gap-10 max-w-6xl mx-auto w-full">
-        {/* Scheduler Form */}
+        {/* ✅ UPDATED: Scheduler Form with Token Dropdowns */}
         <div className="bg-black/40 backdrop-blur-sm border border-primary/30 rounded-2xl p-6 shadow-lg">
           <h2 className="text-3xl font-bold mb-6 text-secondary">Schedule Swap</h2>
 
@@ -283,13 +216,6 @@ export default function TWAPPage() {
             onChange={(e) => setForm({ ...form, totalAmount: e.target.value })}
           />
 
-          {/* Balance Display */}
-          {balance !== undefined && (
-            <p className="text-sm text-gray-400 mb-4">
-              Balance: <strong>{formatTokenBalance(balance as bigint, form.fromToken === 'USDC' ? 6 : 18)}</strong> {form.fromToken}
-            </p>
-          )}
-
           {/* Slices & Interval */}
           <div className="grid grid-cols-2 gap-4 mb-4">
             <input
@@ -317,29 +243,14 @@ export default function TWAPPage() {
             onChange={(e) => setForm({ ...form, minReturn: e.target.value })}
           />
 
-          {/* Approval or Schedule Button */}
-          {needsApproval ? (
-            <button
-              onClick={handleApprove}
-              disabled={isPending}
-              className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-lg transition shadow-lg"
-            >
-              {isPending ? 'Confirming...' : 'Approve'} {form.fromToken}
-            </button>
-          ) : (
-            <button
-              onClick={handleSchedule}
-              disabled={isPending}
-              className="w-full bg-primary hover:bg-primary-light text-white font-bold py-3 rounded-lg transition shadow-lg"
-            >
-              {isPending ? 'Confirming...' : 'Schedule TWAP'}
-            </button>
-          )}
-
-          {/* Debug: Show allowance */}
-          <p className="text-xs text-gray-500 mt-2">
-            Allowance: {allowance ? (allowance as any).toString() : '0'} {form.fromToken}
-          </p>
+          {/* Schedule Button */}
+          <button
+            onClick={handleSchedule}
+            disabled={isPending}
+            className="w-full bg-primary hover:bg-primary-light text-white font-bold py-3 rounded-lg transition shadow-lg"
+          >
+            {isPending ? 'Confirming...' : 'Schedule TWAP'}
+          </button>
         </div>
 
         {/* Orders */}
@@ -358,9 +269,6 @@ export default function TWAPPage() {
       <footer className="py-6 px-8 text-center text-gray-500 border-t border-primary/20 backdrop-blur-sm bg-black/20">
         © 2025 Fusion Chrono. All rights reserved.
       </footer>
-
-      {/* Toast Notifications */}
-      <Toaster position="top-right" />
     </div>
   )
 }

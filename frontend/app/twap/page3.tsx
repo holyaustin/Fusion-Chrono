@@ -9,33 +9,21 @@ import { CrossChainTWAPABI } from '@/lib/abi/CrossChainTWAPABI'
 import { ERC20_ABI } from '@/lib/abi/ERC20_ABI'
 import Image from 'next/image'
 import Link from 'next/link'
-import toast, { Toaster } from 'react-hot-toast'
 
-const CONTRACT_ADDRESS = '0x7b954082151F7a44B2E42Ef9225393ea4f16c482' as const
+const CONTRACT_ADDRESS = '0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F' as const
 
-// ✅ Token List (Chain-aware) - WETH & USDC preserved
-const TOKENS = {
-  etherlink: {
-    WETH: '0xfc24f770F94edBca6D6f885E12d4317320BcB401', // WETH on Etherlink
-    USDC: '0x796Ea11Fa2dD751eD01b53C372fFDB4AAa8f00F9', // USDC on Etherlink
-  },
-  base: {
-    WETH: '0x4200000000000000000000000000000000000006', // WETH on Base
-    USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base
-  },
-} as const
-
-// ✅ Format token balance (6 or 18 decimals)
-function formatTokenBalance(balance: bigint, decimals: number): string {
-  return (Number(balance) / 10 ** decimals).toFixed(6)
+// ✅ Token addresses
+const TOKENS: Record<string, `0x${string}`> = {
+  'USDC.e': '0x796Ea11Fa2dD751eD01b53C372fFDB4AAa8f00F9',
+  'USDC': '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
 }
 
 export default function TWAPPage() {
-  const { address, chain, isConnected } = useAccount()
+  const { address, chain } = useAccount()
   const { switchChain } = useSwitchChain()
   const { writeContract, isPending } = useWriteContract()
 
-  // ✅ Form state - WETH & USDC preserved
+  // ✅ UPDATED: Form now uses token keys instead of raw addresses
   const [form, setForm] = useState({
     fromChain: 'etherlink' as 'etherlink' | 'base',
     toChain: 'base' as 'etherlink' | 'base',
@@ -48,28 +36,10 @@ export default function TWAPPage() {
     direction: 'etherlinkToBase' as 'etherlinkToBase' | 'baseToEtherlink',
   })
 
-  const { data: orderCount } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: CrossChainTWAPABI,
-    functionName: 'getOrderCount',
-    args: [address!],
-    query: { enabled: !!address },
-  })
+  const fromTokenAddress = TOKENS[form.fromToken]
+  const toTokenAddress = TOKENS[form.toToken]
 
-  // ✅ Derived addresses from token selection
-  const fromTokenAddress = TOKENS[form.fromChain][form.fromToken]
-  const toTokenAddress = TOKENS[form.toChain][form.toToken]
-
-  // ✅ Read balance of fromToken
-  const { data: balance } = useReadContract({
-    address: fromTokenAddress,
-    abi: ERC20_ABI,
-    functionName: 'balanceOf',
-    args: [address!],
-    query: { enabled: !!address && !!fromTokenAddress },
-  })
-
-  // ✅ Read allowance for fromToken
+  // ✅ Read allowance
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: fromTokenAddress,
     abi: ERC20_ABI,
@@ -78,29 +48,18 @@ export default function TWAPPage() {
     query: { enabled: !!address && !!fromTokenAddress },
   })
 
-  // ✅ Check if approval is needed
+  const { data: orderCount } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CrossChainTWAPABI,
+    functionName: 'getOrderCount',
+    args: [address!],
+    query: { enabled: !!address },
+  })
+
   const needsApproval = BigInt(form.totalAmount || '0') > (allowance ? BigInt(allowance.toString()) : 0n)
 
-  // ✅ Update direction based on chains
-  const updateDirection = (from: string, to: string) => {
-    setForm((prev) => ({
-      ...prev,
-      fromChain: from as any,
-      toChain: to as any,
-      direction: from === 'etherlink' && to === 'base' ? 'etherlinkToBase' : 'baseToEtherlink',
-    }))
-  }
-
-  // ✅ Handle approval with wallet connect fallback
   const handleApprove = () => {
-    if (!isConnected) {
-      const connectBtn = document.querySelector('[data-test-id="wagmi-connect-button"]') as HTMLElement
-      if (connectBtn) connectBtn.click()
-      return
-    }
-
     if (!address) return
-
     if (chain?.id !== etherlink.id) {
       switchChain({ chainId: etherlink.id })
       return
@@ -112,27 +71,11 @@ export default function TWAPPage() {
       functionName: 'approve',
       args: [CONTRACT_ADDRESS, BigInt(form.totalAmount || '0')],
       chainId: etherlink.id,
-    }, {
-      onSuccess: () => {
-        toast.success(`✅ Approved ${form.totalAmount} ${form.fromToken}!`)
-        refetchAllowance()
-      },
-      onError: (err) => {
-        toast.error(`❌ Approval failed: ${err.message}`)
-      }
     })
   }
 
-  // ✅ Handle schedule swap
   const handleSchedule = () => {
-    if (!isConnected) {
-      const connectBtn = document.querySelector('[data-test-id="wagmi-connect-button"]') as HTMLElement
-      if (connectBtn) connectBtn.click()
-      return
-    }
-
     if (!address) return
-
     if (chain?.id !== etherlink.id) {
       switchChain({ chainId: etherlink.id })
       return
@@ -152,7 +95,7 @@ export default function TWAPPage() {
       return
     }
     if (interval < 60n) {
-      alert('Interval must be at least 60 seconds')
+      alert('Interval >= 60s')
       return
     }
 
@@ -161,8 +104,8 @@ export default function TWAPPage() {
       abi: CrossChainTWAPABI,
       functionName: 'scheduleSwap',
       args: [
-        fromTokenAddress as `0x${string}`,
-        toTokenAddress as `0x${string}`,
+        fromTokenAddress,
+        toTokenAddress,
         totalAmount,
         numSlices,
         interval,
@@ -184,19 +127,19 @@ export default function TWAPPage() {
             width={80}
             height={80}
             priority
-            className="border-2 border-secondary shadow-lg group-hover:shadow-xl transition"
+            className=" border-2 border-secondary shadow-lg group-hover:shadow-xl transition"
           />
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent group-hover:opacity-80 transition">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               Fusion Chrono
             </h1>
             <p className="text-sm text-gray-400 ml-1">TWAP Aggregator</p>
           </div>
         </Link>
 
-        <Link href="/slippage" className="full-round text-2xl text-secondary px-8 py-2 bg-red-700 font-bold hover:bg-red-500">
+        <Link href="/slippage" className="full-round text-2xl text-secondary px-8 py-2 bg-red-700 font-bold hover:bg-red-500 ">
           Slippage Analytics
-        </Link>
+      </Link>
 
         <ConnectButton.Custom>
           {({ openConnectModal, openAccountModal }) => {
@@ -222,73 +165,44 @@ export default function TWAPPage() {
         </ConnectButton.Custom>
       </header>
 
-      {/* Main */}
       <main className="flex-1 p-6 grid md:grid-cols-2 gap-10 max-w-6xl mx-auto w-full">
-        {/* Scheduler Form */}
         <div className="bg-black/40 backdrop-blur-sm border border-primary/30 rounded-2xl p-6 shadow-lg">
           <h2 className="text-3xl font-bold mb-6 text-secondary">Schedule Swap</h2>
 
-          {/* From Chain & Token */}
+          {/* From Token */}
           <div className="mb-4">
             <label className="block text-sm text-gray-400 mb-1">From Token</label>
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={form.fromChain}
-                onChange={(e) => updateDirection(e.target.value, form.toChain)}
-                className="p-3 bg-black border border-gray-600 rounded text-white"
-              >
-                <option value="etherlink">Etherlink</option>
-                <option value="base">Base</option>
-              </select>
-              <select
-                value={form.fromToken}
-                onChange={(e) => setForm({ ...form, fromToken: e.target.value as any })}
-                className="p-3 bg-black border border-gray-600 rounded text-white"
-              >
-                <option value="WETH">WETH</option>
-                <option value="USDC">USDC</option>
-              </select>
-            </div>
+            <select
+              value={form.fromToken}
+              onChange={(e) => setForm({ ...form, fromToken: e.target.value as any })}
+              className="input"
+            >
+              <option value="USDC.e">USDC (Etherlink)</option>
+              <option value="USDC">USDC (Base)</option>
+            </select>
           </div>
 
-          {/* To Chain & Token */}
+          {/* To Token */}
           <div className="mb-4">
             <label className="block text-sm text-gray-400 mb-1">To Token</label>
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={form.toChain}
-                onChange={(e) => updateDirection(form.fromChain, e.target.value)}
-                className="p-3 bg-black border border-gray-600 rounded text-white"
-              >
-                <option value="base">Base</option>
-                <option value="etherlink">Etherlink</option>
-              </select>
-              <select
-                value={form.toToken}
-                onChange={(e) => setForm({ ...form, toToken: e.target.value as any })}
-                className="p-3 bg-black border border-gray-600 rounded text-white"
-              >
-                <option value="WETH">WETH</option>
-                <option value="USDC">USDC</option>
-              </select>
-            </div>
+            <select
+              value={form.toToken}
+              onChange={(e) => setForm({ ...form, toToken: e.target.value as any })}
+              className="input"
+            >
+              <option value="USDC">USDC (Base)</option>
+              <option value="USDC.e">USDC.e (Etherlink)</option>
+            </select>
           </div>
 
           {/* Amount */}
           <input
             type="number"
-            placeholder="Total Amount"
-            className="w-full p-3 mb-4 bg-black border border-gray-600 rounded text-white"
+            placeholder="Amount"
+            className="input mb-4"
             value={form.totalAmount}
             onChange={(e) => setForm({ ...form, totalAmount: e.target.value })}
           />
-
-          {/* Balance Display */}
-          {balance !== undefined && (
-            <p className="text-sm text-gray-400 mb-4">
-              Balance: <strong>{formatTokenBalance(balance as bigint, form.fromToken === 'USDC' ? 6 : 18)}</strong> {form.fromToken}
-            </p>
-          )}
 
           {/* Slices & Interval */}
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -297,40 +211,40 @@ export default function TWAPPage() {
               placeholder="Slices"
               value={form.numSlices}
               onChange={(e) => setForm({ ...form, numSlices: e.target.value })}
-              className="p-3 bg-black border border-gray-600 rounded text-white"
+              className="input"
             />
             <input
               type="number"
               placeholder="Interval (sec)"
               value={form.interval}
               onChange={(e) => setForm({ ...form, interval: e.target.value })}
-              className="p-3 bg-black border border-gray-600 rounded text-white"
+              className="input"
             />
           </div>
 
           {/* Min Return */}
           <input
             type="number"
-            placeholder="Min Return Amount"
-            className="w-full p-3 mb-4 bg-black border border-gray-600 rounded text-white"
+            placeholder="Min Return"
+            className="input mb-6"
             value={form.minReturn}
             onChange={(e) => setForm({ ...form, minReturn: e.target.value })}
           />
 
-          {/* Approval or Schedule Button */}
+          {/* Approval or Schedule */}
           {needsApproval ? (
             <button
               onClick={handleApprove}
               disabled={isPending}
-              className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-lg transition shadow-lg"
+              className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-lg transition"
             >
-              {isPending ? 'Confirming...' : 'Approve'} {form.fromToken}
+              {isPending ? 'Confirming...' : 'Approve USDC'}
             </button>
           ) : (
             <button
               onClick={handleSchedule}
               disabled={isPending}
-              className="w-full bg-primary hover:bg-primary-light text-white font-bold py-3 rounded-lg transition shadow-lg"
+              className="w-full bg-primary hover:bg-primary-light text-white font-bold py-3 rounded-lg transition"
             >
               {isPending ? 'Confirming...' : 'Schedule TWAP'}
             </button>
@@ -358,9 +272,6 @@ export default function TWAPPage() {
       <footer className="py-6 px-8 text-center text-gray-500 border-t border-primary/20 backdrop-blur-sm bg-black/20">
         © 2025 Fusion Chrono. All rights reserved.
       </footer>
-
-      {/* Toast Notifications */}
-      <Toaster position="top-right" />
     </div>
   )
 }

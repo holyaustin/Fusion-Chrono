@@ -27,7 +27,7 @@ if (!ONEINCH_API_KEY) {
 
 // 📦 Contract Address
 // This is the CrossChainTWAP contract deployed on Etherlink Mainnet
-const CROSS_CHAIN_TWAP_ADDRESS = '0xA2Aea35523a71EFf81283E32F52151F12D5CBB7F'
+const CROSS_CHAIN_TWAP_ADDRESS = '0x7b954082151F7a44B2E42Ef9225393ea4f16c482'
 
 // 🌐 RPC Endpoint
 // Etherlink Mainnet RPC (public node)

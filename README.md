@@ -262,3 +262,6 @@ MIT
 
 
 
+✅ CrossChainTWAP deployed to: 0x7b954082151F7a44B2E42Ef9225393ea4f16c482
+
+npx hardhat verify --network etherlink 0x7b954082151F7a44B2E42Ef9225393ea4f16c482
