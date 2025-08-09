@@ -55,14 +55,15 @@ const config: HardhatUserConfig = {
           browserURL: "https://explorer.etherlink.com",
         },
       },
-    {
-      network: "base",
-      chainId: 8453,
-      urls: {
-        apiURL: "https://base-mainnet.infura.io/v3/" + process.env.INFURA_KEY, //https://mainnet.base.org
-        browserURL: "https://basescan.org/",
-      },
-    },
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://base.blockscout.com/api",
+          browserURL: "https://base.blockscout.com"
+        }
+        },
+      
     ],
   },
     mocha: {
